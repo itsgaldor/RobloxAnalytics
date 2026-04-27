@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Marcas — PCA Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <link rel="shortcut icon" href="/dashboard/images/logo.png">
+  <link rel="stylesheet" href="/dashboard/css/animate.css/animate.min.css" />
+  <link rel="stylesheet" href="/dashboard/css/glyphicons/glyphicons.css" />
+  <link rel="stylesheet" href="/dashboard/css/font-awesome/css/font-awesome.min.css" />
+  <link rel="stylesheet" href="/dashboard/css/ionicons/css/ionicons.min.css" />
+  <link rel="stylesheet" href="/dashboard/css/bootstrap/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="/dashboard/css/styles/app.css" />
+  <link rel="stylesheet" href="/dashboard/css/styles/style.css" />
+  <link rel="stylesheet" href="/dashboard/css/styles/font.css" />
+  <link rel="stylesheet" href="/dashboard/css/pca.css" />
+  <link rel="stylesheet" href="/admin/css/admin.css" />
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- SIDEBAR -->
+  <div id="aside" class="app-aside fade nav-dropdown black">
+    <div class="navside dk pca-admin-sidebar" data-layout="column">
+      <div class="navbar no-radius pca-admin-navbar">
+        <a href="/admin/" class="navbar-brand">
+          <i class="ion-ios-settings" style="font-size:1.4rem; margin-right:8px;"></i>
+          <span class="_600">PCA Admin</span>
+        </a>
+      </div>
+      <div data-flex class="hide-scroll">
+        <nav class="scroll nav-stacked nav-stacked-rounded nav-color">
+          <ul class="nav" data-ui-nav>
+            <li class="nav-header hidden-folded"><span class="text-xs">Administración</span></li>
+            <li><a href="/admin/"><span class="nav-icon"><i class="ion-ios-pulse"></i></span><span class="nav-text">Resumen global</span></a></li>
+            <li class="active"><a href="/admin/marcas.html"><span class="nav-icon"><i class="ion-ios-people"></i></span><span class="nav-text">Marcas</span></a></li>
+            <li><a href="/admin/script-generator.html"><span class="nav-icon"><i class="ion-code"></i></span><span class="nav-text">Generador Script</span></a></li>
+            <li><a href="/admin/reportes.html"><span class="nav-icon"><i class="ion-ios-paper"></i></span><span class="nav-text">Reportes</span></a></li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div id="content" class="app-content" role="main">
+
+    <!-- HEADER -->
+    <div class="app-header white bg b-b">
+      <div class="navbar">
+        <a data-toggle="modal" data-target="#aside" class="navbar-item pull-left hidden-lg-up p-r m-a-0">
+          <i class="ion-navicon"></i>
+        </a>
+        <div class="navbar-item pull-left">
+          <a href="/admin/" class="text-muted">Admin</a>
+          <span class="text-muted m-x-xs">/</span>
+          <span class="_500">Marcas</span>
+        </div>
+        <ul class="nav navbar-nav pull-right">
+          <li class="nav-item">
+            <a href="/admin/marca-detalle.html" class="btn btn-sm btn-primary m-x-xs">
+              <i class="ion-plus"></i> Nueva marca
+            </a>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- BODY -->
+    <div class="app-body">
+      <div class="padding">
+
+        <div id="section-error" class="alert alert-danger hide m-b">
+          <i class="ion-alert-circled"></i> <span id="error-message"></span>
+        </div>
+        <div id="section-success" class="alert alert-success hide m-b">
+          <i class="ion-checkmark-circled"></i> <span id="success-message"></span>
+        </div>
+
+        <div class="box">
+          <div class="box-header b-b">
+            <h3>Gestión de marcas</h3>
+            <small class="text-muted">Administrá las marcas cliente y sus tokens de API</small>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-striped b-t m-b-0">
+              <thead>
+                <tr>
+                  <th>Logo</th>
+                  <th>Nombre / Slug</th>
+                  <th>Color</th>
+                  <th>Universe ID</th>
+                  <th>API Token</th>
+                  <th>Estado</th>
+                  <th>Creada</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-marcas">
+                <tr><td colspan="8"><div class="pca-loading" style="min-height:18px;"></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="app-footer white bg p-a b-t">
+      <span class="text-sm text-muted">&copy; 2026 — Peru City Analytics Admin</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal de confirmación de desactivación -->
+<div id="modal-desactivar" class="modal fade" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+        <h4 class="modal-title">Desactivar marca</h4>
+      </div>
+      <div class="modal-body">
+        <p id="modal-desactivar-texto"></p>
+        <p class="text-muted m-b-0">Los datos históricos se conservan.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-danger" id="btn-confirmar-desactivar">Desactivar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/dashboard/libs/jquery/dist/jquery.js"></script>
+<script src="/dashboard/libs/tether/dist/js/tether.min.js"></script>
+<script src="/dashboard/libs/bootstrap/dist/js/bootstrap.js"></script>
+<script src="/dashboard/libs/jQuery-Storage-API/jquery.storageapi.min.js"></script>
+<script src="/dashboard/libs/PACE/pace.min.js"></script>
+<script src="/dashboard/scripts/app.js"></script>
+<script src="/dashboard/scripts/ui-load.js"></script>
+<script src="/dashboard/scripts/ui-jp.js"></script>
+<script src="/dashboard/scripts/ui-nav.js"></script>
+<script src="/dashboard/scripts/ui-toggle-class.js"></script>
+<script src="/dashboard/js/config.js"></script>
+<script src="/admin/js/admin-api.js"></script>
+<script src="/admin/js/pages/marcas.js"></script>
+</body>
+</html>

@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Generador Script — PCA Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <link rel="shortcut icon" href="/dashboard/images/logo.png">
+  <link rel="stylesheet" href="/dashboard/css/animate.css/animate.min.css" />
+  <link rel="stylesheet" href="/dashboard/css/glyphicons/glyphicons.css" />
+  <link rel="stylesheet" href="/dashboard/css/font-awesome/css/font-awesome.min.css" />
+  <link rel="stylesheet" href="/dashboard/css/ionicons/css/ionicons.min.css" />
+  <link rel="stylesheet" href="/dashboard/css/bootstrap/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="/dashboard/css/styles/app.css" />
+  <link rel="stylesheet" href="/dashboard/css/styles/style.css" />
+  <link rel="stylesheet" href="/dashboard/css/styles/font.css" />
+  <link rel="stylesheet" href="/dashboard/css/pca.css" />
+  <link rel="stylesheet" href="/admin/css/admin.css" />
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- SIDEBAR -->
+  <div id="aside" class="app-aside fade nav-dropdown black">
+    <div class="navside dk pca-admin-sidebar" data-layout="column">
+      <div class="navbar no-radius pca-admin-navbar">
+        <a href="/admin/" class="navbar-brand">
+          <i class="ion-ios-settings" style="font-size:1.4rem; margin-right:8px;"></i>
+          <span class="_600">PCA Admin</span>
+        </a>
+      </div>
+      <div data-flex class="hide-scroll">
+        <nav class="scroll nav-stacked nav-stacked-rounded nav-color">
+          <ul class="nav" data-ui-nav>
+            <li class="nav-header hidden-folded"><span class="text-xs">Administración</span></li>
+            <li><a href="/admin/"><span class="nav-icon"><i class="ion-ios-pulse"></i></span><span class="nav-text">Resumen global</span></a></li>
+            <li><a href="/admin/marcas.html"><span class="nav-icon"><i class="ion-ios-people"></i></span><span class="nav-text">Marcas</span></a></li>
+            <li class="active"><a href="/admin/script-generator.html"><span class="nav-icon"><i class="ion-code"></i></span><span class="nav-text">Generador Script</span></a></li>
+            <li><a href="/admin/reportes.html"><span class="nav-icon"><i class="ion-ios-paper"></i></span><span class="nav-text">Reportes</span></a></li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div id="content" class="app-content" role="main">
+
+    <!-- HEADER -->
+    <div class="app-header white bg b-b">
+      <div class="navbar">
+        <a data-toggle="modal" data-target="#aside" class="navbar-item pull-left hidden-lg-up p-r m-a-0">
+          <i class="ion-navicon"></i>
+        </a>
+        <div class="navbar-item pull-left">
+          <a href="/admin/" class="text-muted">Admin</a>
+          <span class="text-muted m-x-xs">/</span>
+          <span class="_500">Generador Script</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- BODY -->
+    <div class="app-body">
+      <div class="padding">
+
+        <div id="section-error" class="alert alert-danger hide m-b">
+          <i class="ion-alert-circled"></i> <span id="error-message"></span>
+        </div>
+
+        <div class="row">
+          <div class="col-md-8">
+
+            <!-- Selector de marca -->
+            <div class="box m-b">
+              <div class="box-header b-b">
+                <h3>Seleccionar marca</h3>
+              </div>
+              <div class="box-body p-a">
+                <div class="form-group m-b-0">
+                  <label for="select-marca">Marca</label>
+                  <select id="select-marca" class="form-control">
+                    <option value="">— Cargando marcas… —</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Preview del Script -->
+            <div class="box m-b" id="box-script" style="display:none;">
+              <div class="box-header b-b" style="display:flex;align-items:center;justify-content:space-between;">
+                <div>
+                  <h3 id="script-titulo">Script de Lua</h3>
+                  <small class="text-muted">Listo para copiar e instalar en Roblox Studio</small>
+                </div>
+                <div>
+                  <button class="btn btn-sm btn-primary m-r-xs" id="btn-copiar">
+                    <i class="ion-ios-copy"></i> Copiar Script
+                  </button>
+                  <button class="btn btn-sm btn-default" id="btn-descargar">
+                    <i class="ion-ios-download"></i> Descargar .lua
+                  </button>
+                </div>
+              </div>
+              <div class="box-body p-a-0">
+                <pre id="script-pre" class="pca-script-pre m-a-0">-- Seleccioná una marca para ver el script</pre>
+              </div>
+            </div>
+
+            <!-- Instrucciones de instalación -->
+            <div class="box m-b" id="box-instrucciones" style="display:none;">
+              <div class="box-header b-b">
+                <h3>Instrucciones de instalación</h3>
+              </div>
+              <div class="box-body p-a">
+                <div class="panel-group" id="accordion-instrucciones">
+
+                  <div class="panel panel-default">
+                    <div class="panel-heading">
+                      <h4 class="panel-title">
+                        <a data-toggle="collapse" data-parent="#accordion-instrucciones" href="#paso1">
+                          <span class="label label-default m-r-xs">1</span> Habilitar HTTP Requests
+                        </a>
+                      </h4>
+                    </div>
+                    <div id="paso1" class="panel-collapse collapse in">
+                      <div class="panel-body">
+                        En Roblox Studio → <strong>Game Settings</strong> → <strong>Security</strong> → <strong>Allow HTTP Requests</strong> → activar ✓
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="panel panel-default">
+                    <div class="panel-heading">
+                      <h4 class="panel-title">
+                        <a data-toggle="collapse" data-parent="#accordion-instrucciones" href="#paso2" class="collapsed">
+                          <span class="label label-default m-r-xs">2</span> Insertar el Script
+                        </a>
+                      </h4>
+                    </div>
+                    <div id="paso2" class="panel-collapse collapse">
+                      <div class="panel-body">
+                        <p><strong>Explorer</strong> → <strong>ServerScriptService</strong> → Click derecho → <strong>Insert Object</strong> → <strong>Script</strong></p>
+                        <p>Renombrar a: <code>PeruCityAnalytics</code></p>
+                        <p>Pegar el código copiado y guardar.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="panel panel-default">
+                    <div class="panel-heading">
+                      <h4 class="panel-title">
+                        <a data-toggle="collapse" data-parent="#accordion-instrucciones" href="#paso3" class="collapsed">
+                          <span class="label label-default m-r-xs">3</span> Publicar el juego
+                        </a>
+                      </h4>
+                    </div>
+                    <div id="paso3" class="panel-collapse collapse">
+                      <div class="panel-body">
+                        <strong>File</strong> → <strong>Publish to Roblox</strong> (o Ctrl+P)
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="panel panel-default">
+                    <div class="panel-heading">
+                      <h4 class="panel-title">
+                        <a data-toggle="collapse" data-parent="#accordion-instrucciones" href="#paso4" class="collapsed">
+                          <span class="label label-default m-r-xs">4</span> Verificar en Studio
+                        </a>
+                      </h4>
+                    </div>
+                    <div id="paso4" class="panel-collapse collapse">
+                      <div class="panel-body">
+                        Entrá al juego. En el panel de <strong>Output</strong> de Studio debería aparecer:
+                        <br><code id="verify-msg" class="m-t-xs" style="display:block;"></code>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="panel panel-default">
+                    <div class="panel-heading">
+                      <h4 class="panel-title">
+                        <a data-toggle="collapse" data-parent="#accordion-instrucciones" href="#paso5" class="collapsed">
+                          <span class="label label-default m-r-xs">5</span> Confirmar en el dashboard
+                        </a>
+                      </h4>
+                    </div>
+                    <div id="paso5" class="panel-collapse collapse">
+                      <div class="panel-body">
+                        <a id="link-dashboard" href="#" target="_blank" class="btn btn-sm btn-primary">
+                          <i class="ion-ios-analytics"></i> Ver dashboard de la marca
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Aviso de seguridad -->
+          <div class="col-md-4">
+            <div class="alert alert-warning" id="alert-seguridad" style="display:none;">
+              <i class="ion-alert-circled" style="font-size:1.2rem;"></i>
+              <strong> Aviso de seguridad</strong>
+              <p class="m-t-sm m-b-0" id="texto-seguridad"></p>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
+    <div class="app-footer white bg p-a b-t">
+      <span class="text-sm text-muted">&copy; 2026 — Peru City Analytics Admin</span>
+    </div>
+  </div>
+
+</div>
+
+<script src="/dashboard/libs/jquery/dist/jquery.js"></script>
+<script src="/dashboard/libs/tether/dist/js/tether.min.js"></script>
+<script src="/dashboard/libs/bootstrap/dist/js/bootstrap.js"></script>
+<script src="/dashboard/libs/jQuery-Storage-API/jquery.storageapi.min.js"></script>
+<script src="/dashboard/libs/PACE/pace.min.js"></script>
+<script src="/dashboard/scripts/app.js"></script>
+<script src="/dashboard/scripts/ui-load.js"></script>
+<script src="/dashboard/scripts/ui-jp.js"></script>
+<script src="/dashboard/scripts/ui-nav.js"></script>
+<script src="/dashboard/scripts/ui-toggle-class.js"></script>
+<script src="/dashboard/js/config.js"></script>
+<script src="/admin/js/admin-api.js"></script>
+<script src="/admin/js/pages/script-generator.js"></script>
+</body>
+</html>

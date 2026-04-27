@@ -1,0 +1,216 @@
+/* ============================================================
+   Peru City Analytics — Estilos custom
+   Complementa la plantilla Aside sin modificar sus archivos
+   ============================================================ */
+
+/* ── Animación de spin para el botón de refresh ── */
+@keyframes pca-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.spin {
+  animation: pca-spin 1s linear infinite;
+  display: inline-block;
+}
+
+/* ── Skeleton / loading shimmer ── */
+.pca-loading {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: pca-shimmer 1.5s infinite;
+  border-radius: 4px;
+  min-height: 80px;
+}
+@keyframes pca-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Skeleton en modo oscuro */
+.dark .pca-loading {
+  background: linear-gradient(90deg, #2a3a4a 25%, #1e2d3d 50%, #2a3a4a 75%);
+  background-size: 200% 100%;
+}
+
+/* ── Badges de tipo de servidor (público/privado) ── */
+.badge-server-type {
+  font-size: 10px;
+  margin: 2px 1px;
+  padding: 2px 5px;
+}
+
+/* ── KPI cards — fila horizontal uniforme ── */
+#section-kpis {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  border-bottom: 1px solid #e8e8e8;
+  margin-bottom: 1.5rem;
+  overflow-x: auto;
+}
+#section-kpis > [class*="col-"],
+#section-kpis > .b-r {
+  flex: 1 1 0 !important;
+  width: auto !important;
+  min-width: 160px;
+  max-width: none !important;
+  padding: 0 !important;
+  border-right: 1px solid #e8e8e8;
+}
+#section-kpis > [class*="col-"]:last-child,
+#section-kpis > .b-r:last-child {
+  border-right: none !important;
+}
+#section-kpis .padding {
+  padding: 20px 16px !important;
+  min-height: 150px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+/* Dark mode KPI borders */
+.dark #section-kpis,
+.dark #section-kpis > [class*="col-"],
+.dark #section-kpis > .b-r {
+  border-color: rgba(255,255,255,0.08) !important;
+}
+
+/* Responsive: en mobile vuelven a wrap */
+@media (max-width: 768px) {
+  #section-kpis {
+    flex-wrap: wrap !important;
+  }
+  #section-kpis > [class*="col-"],
+  #section-kpis > .b-r {
+    flex: 1 1 45% !important;
+    min-width: 45%;
+  }
+}
+
+/* ── Banner de marca en el header ── */
+#brand-banner-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px;
+}
+#brand-banner-wrap #brand-name {
+  font-weight: 500;
+  font-size: 1rem;
+  white-space: nowrap;
+}
+
+/* ── Separación entre secciones ── */
+#section-charts { margin-top: 1.5rem; }
+#section-table  { margin-top: 1.5rem; }
+
+/* ── Limitar altura máxima de los gráficos ── */
+#chart-sessions,
+#chart-server-type {
+  max-height: 260px;
+}
+
+/* ── Tabla con columnas bien alineadas ── */
+#table-daily th,
+#table-daily td {
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+/* ── Aplicar clase 'dark' desde js/theme.js ── */
+.dark-init body {
+  background-color: #1a2639;
+}
+
+/* ── Responsive: ocultar banner en móvil ── */
+@media (max-width: 576px) {
+  #brand-banner-wrap {
+    display: none;
+  }
+}
+
+/* ── Divisor en el nav del sidebar ── */
+.nav-divider {
+  height: 1px;
+  background: rgba(255,255,255,0.15);
+  margin: 8px 16px;
+  list-style: none;
+}
+
+/* Item Admin — más sutil que los items principales */
+.navside .nav li:last-child a {
+  opacity: 0.75;
+  font-size: 11px;
+}
+.navside .nav li:last-child a:hover {
+  opacity: 1 !important;
+}
+
+/* ── Variación % vs período anterior ── */
+.pca-variation {
+  margin-top: 6px;
+  font-size: 0.82rem;
+  line-height: 1.3;
+}
+.pca-variation .fa-arrow-up,
+.pca-variation .fa-arrow-down {
+  font-size: 0.75rem;
+}
+
+/* ── Última actualización en navbar ── */
+#last-updated {
+  font-size: 0.75rem;
+  opacity: 0.65;
+  white-space: nowrap;
+  padding: 0 8px;
+}
+
+/* ── Toggle de métrica en encabezado del gráfico ── */
+.chart-header-flex {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chart-header-flex h3 {
+  margin: 0;
+}
+.chart-header-flex .btn-group-metric {
+  flex-shrink: 0;
+}
+
+/* Botón activo de métrica — usa CSS variable inyectada por whitelabel.js */
+.active-metric {
+  background-color: var(--brand-primary, #6C3ADE) !important;
+  color: #ffffff !important;
+  border-color: var(--brand-primary, #6C3ADE) !important;
+}
+
+/* ── Hover en tabla diaria ── */
+#table-daily tbody tr:hover {
+  background-color: rgba(0,0,0,0.03) !important;
+  cursor: default;
+}
+.dark #table-daily tbody tr:hover {
+  background-color: rgba(255,255,255,0.04) !important;
+}
+
+/* ── Dark mode: cards KPI ── */
+.dark .box,
+.dark .box-header {
+  background-color: #1e2d3d !important;
+  border-color: #2a3a4a !important;
+}
+.dark #section-kpis .b-r,
+.dark #section-kpis .b-b {
+  border-color: #2a3a4a !important;
+}
+.dark .table-striped > tbody > tr:nth-of-type(odd) {
+  background-color: rgba(255,255,255,0.04);
+}
+.dark .pca-variation .text-success { color: #5ec97f !important; }
+.dark .pca-variation .text-danger  { color: #e06c75 !important; }

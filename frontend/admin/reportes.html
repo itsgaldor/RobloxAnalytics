@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Reportes — PCA Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <link rel="shortcut icon" href="/dashboard/images/logo.png">
+  <link rel="stylesheet" href="/dashboard/css/animate.css/animate.min.css" />
+  <link rel="stylesheet" href="/dashboard/css/glyphicons/glyphicons.css" />
+  <link rel="stylesheet" href="/dashboard/css/font-awesome/css/font-awesome.min.css" />
+  <link rel="stylesheet" href="/dashboard/css/ionicons/css/ionicons.min.css" />
+  <link rel="stylesheet" href="/dashboard/css/bootstrap/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="/dashboard/css/styles/app.css" />
+  <link rel="stylesheet" href="/dashboard/css/styles/style.css" />
+  <link rel="stylesheet" href="/dashboard/css/styles/font.css" />
+  <link rel="stylesheet" href="/dashboard/css/pca.css" />
+  <link rel="stylesheet" href="/admin/css/admin.css" />
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- SIDEBAR -->
+  <div id="aside" class="app-aside fade nav-dropdown black">
+    <div class="navside dk pca-admin-sidebar" data-layout="column">
+      <div class="navbar no-radius pca-admin-navbar">
+        <a href="/admin/" class="navbar-brand">
+          <i class="ion-ios-settings" style="font-size:1.4rem; margin-right:8px;"></i>
+          <span class="_600">PCA Admin</span>
+        </a>
+      </div>
+      <div data-flex class="hide-scroll">
+        <nav class="scroll nav-stacked nav-stacked-rounded nav-color">
+          <ul class="nav" data-ui-nav>
+            <li class="nav-header hidden-folded"><span class="text-xs">Administracion</span></li>
+            <li><a href="/admin/"><span class="nav-icon"><i class="ion-ios-pulse"></i></span><span class="nav-text">Resumen global</span></a></li>
+            <li><a href="/admin/marcas.html"><span class="nav-icon"><i class="ion-ios-people"></i></span><span class="nav-text">Marcas</span></a></li>
+            <li><a href="/admin/script-generator.html"><span class="nav-icon"><i class="ion-code"></i></span><span class="nav-text">Generador Script</span></a></li>
+            <li class="active"><a href="/admin/reportes.html"><span class="nav-icon"><i class="ion-ios-paper"></i></span><span class="nav-text">Reportes</span></a></li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+  </div>
+  <!-- / SIDEBAR -->
+
+  <!-- CONTENT -->
+  <div id="content" class="app-content" role="main">
+
+    <!-- HEADER -->
+    <div class="app-header white bg b-b">
+      <div class="navbar">
+        <a data-toggle="modal" data-target="#aside" class="navbar-item pull-left hidden-lg-up p-r m-a-0">
+          <i class="ion-navicon"></i>
+        </a>
+        <div class="navbar-item pull-left">
+          <a href="/admin/" class="text-muted">Admin</a>
+          <span class="text-muted m-x-xs">/</span>
+          <span class="_500">Reportes</span>
+        </div>
+      </div>
+    </div>
+    <!-- / HEADER -->
+
+    <!-- BODY -->
+    <div class="app-body">
+      <div class="padding">
+
+        <div id="section-error" class="alert alert-danger m-b" style="display:none;">
+          <i class="ion-alert-circled"></i> <span id="error-message"></span>
+        </div>
+        <div id="section-success" class="alert alert-success m-b" style="display:none;">
+          <i class="ion-checkmark-circled"></i> <span id="success-message"></span>
+        </div>
+
+        <!-- Selector de marca -->
+        <div class="box m-b">
+          <div class="box-header b-b">
+            <h3>Generador de Reportes PDF</h3>
+            <small class="text-muted">Selecciona una marca y configura el reporte</small>
+          </div>
+          <div class="box-body p-a">
+            <div class="form-group m-b-0">
+              <label class="_500 m-b-xs">Marca</label>
+              <select id="select-marca" class="form-control" style="max-width:320px;">
+                <option value="">— Seleccionar marca —</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Formulario (oculto hasta seleccionar marca) -->
+        <div id="section-form" style="display:none;">
+          <div class="row">
+
+            <!-- Columna izquierda: parametros -->
+            <div class="col-sm-7">
+              <div class="box m-b">
+                <div class="box-header b-b">
+                  <h4 class="m-b-0">Configuracion del reporte</h4>
+                </div>
+                <div class="box-body p-a">
+
+                  <!-- Rango de fechas -->
+                  <div class="form-group">
+                    <label class="_500">Periodo</label>
+                    <div class="row">
+                      <div class="col-xs-6">
+                        <label class="text-muted text-xs">Desde</label>
+                        <input type="date" id="input-date-from" class="form-control" />
+                      </div>
+                      <div class="col-xs-6">
+                        <label class="text-muted text-xs">Hasta</label>
+                        <input type="date" id="input-date-to" class="form-control" />
+                      </div>
+                    </div>
+                    <small class="text-muted">Maximo 90 dias</small>
+                  </div>
+
+                  <!-- KPIs -->
+                  <div class="form-group">
+                    <label class="_500">KPIs a incluir</label>
+                    <div class="m-t-xs">
+                      <label class="i-checks m-b-xs">
+                        <input type="checkbox" name="kpi" value="sessions" checked>
+                        <i></i> Sesiones totales
+                      </label><br>
+                      <label class="i-checks m-b-xs">
+                        <input type="checkbox" name="kpi" value="dau" checked>
+                        <i></i> DAU (usuarios activos por dia)
+                      </label><br>
+                      <label class="i-checks m-b-xs">
+                        <input type="checkbox" name="kpi" value="mau" checked>
+                        <i></i> MAU (usuarios activos 30 dias)
+                      </label><br>
+                      <label class="i-checks m-b-xs">
+                        <input type="checkbox" name="kpi" value="avg_session_minutes" checked>
+                        <i></i> Tiempo promedio de sesion
+                      </label><br>
+                      <label class="i-checks m-b-xs">
+                        <input type="checkbox" name="kpi" value="total_hours" checked>
+                        <i></i> Horas totales de juego
+                      </label>
+                    </div>
+                  </div>
+
+                  <!-- Idioma -->
+                  <div class="form-group m-b-0">
+                    <label class="_500">Idioma del reporte</label>
+                    <div class="m-t-xs">
+                      <label class="i-checks i-checks-sm m-r">
+                        <input type="radio" name="language" value="es" checked>
+                        <i></i> Espanol
+                      </label>
+                      <label class="i-checks i-checks-sm">
+                        <input type="radio" name="language" value="en">
+                        <i></i> English
+                      </label>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+
+            <!-- Columna derecha: IA -->
+            <div class="col-sm-5">
+              <div class="box m-b b-a">
+                <div class="box-header b-b">
+                  <h4 class="m-b-0">
+                    Analisis con Inteligencia Artificial
+                    <span class="label label-info m-l-xs">Opcional</span>
+                  </h4>
+                </div>
+                <div class="box-body p-a">
+
+                  <!-- Toggle AI -->
+                  <div class="m-b">
+                    <label class="i-checks">
+                      <input type="checkbox" id="toggle-ai">
+                      <i></i>
+                      <span id="toggle-ai-label">No incluir analisis de IA</span>
+                    </label>
+                  </div>
+
+                  <!-- Descripcion (visible solo con AI ON) -->
+                  <div id="ai-desc" class="alert alert-info m-b" style="display:none;">
+                    <small>
+                      <strong>Claude</strong> analizara las metricas del periodo,
+                      las comparara con el periodo anterior e identificara tendencias
+                      y recomendaciones accionables.
+                    </small>
+                  </div>
+
+                  <!-- Badge informativo -->
+                  <div class="text-muted" style="font-size:0.82rem;">
+                    <i class="ion-information-circled"></i>
+                    El analisis de IA puede tomar 10-20 segundos adicionales.
+                  </div>
+
+                </div>
+              </div>
+
+              <!-- Spinner de progreso -->
+              <div id="section-spinner" class="box p-a text-center m-b" style="display:none;">
+                <i class="ion-android-sync fa-spin" style="font-size:1.8rem; color:#aaa;"></i>
+                <p id="progress-text" class="text-muted m-t-sm m-b-0">Calculando metricas...</p>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Boton principal -->
+          <div class="m-t">
+            <button id="btn-generate" class="btn btn-primary btn-lg">
+              <i class="ion-ios-paper"></i> Generar reporte PDF
+            </button>
+          </div>
+
+        </div>
+        <!-- / section-form -->
+
+      </div>
+    </div>
+    <!-- / BODY -->
+
+    <div class="app-footer white bg p-a b-t">
+      <span class="text-sm text-muted">&copy; 2026 — Peru City Analytics Admin</span>
+    </div>
+  </div>
+  <!-- / CONTENT -->
+
+</div>
+
+<script src="/dashboard/libs/jquery/dist/jquery.js"></script>
+<script src="/dashboard/libs/tether/dist/js/tether.min.js"></script>
+<script src="/dashboard/libs/bootstrap/dist/js/bootstrap.js"></script>
+<script src="/dashboard/libs/jQuery-Storage-API/jquery.storageapi.min.js"></script>
+<script src="/dashboard/libs/PACE/pace.min.js"></script>
+<script src="/dashboard/scripts/app.js"></script>
+<script src="/dashboard/scripts/ui-load.js"></script>
+<script src="/dashboard/scripts/ui-jp.js"></script>
+<script src="/dashboard/scripts/ui-nav.js"></script>
+<script src="/dashboard/scripts/ui-toggle-class.js"></script>
+<script src="/dashboard/js/config.js"></script>
+<script src="/admin/js/admin-api.js"></script>
+<script src="/admin/js/pages/reportes.js"></script>
+</body>
+</html>

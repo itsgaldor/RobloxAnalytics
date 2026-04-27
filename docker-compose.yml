@@ -1,0 +1,45 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: pca_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pca}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pca}
+      POSTGRES_DB: ${POSTGRES_DB:-pca}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pca} -d ${POSTGRES_DB:-pca}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pca_api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-pca}:${POSTGRES_PASSWORD:-pca}@db:5432/${POSTGRES_DB:-pca}
+    volumes:
+      - ./backend:/app
+      # El frontend se monta en /app/frontend para que FastAPI StaticFiles lo encuentre
+      - ./frontend:/app/frontend
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+    driver: local

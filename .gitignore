@@ -1,0 +1,30 @@
+# Entorno
+backend/.env
+.env
+*.env
+.env.railway
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+*.egg-info/
+
+# Base de datos
+*.db
+*.sqlite3
+
+# Docker
+.docker/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# PDFs de prueba generados
+test_reporte.pdf
+*.pdf
+
+# ZIP de la plantilla — no necesario en el repo
+*.zip

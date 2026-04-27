@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Marca — PCA Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <link rel="shortcut icon" href="/dashboard/images/logo.png">
+  <link rel="stylesheet" href="/dashboard/css/animate.css/animate.min.css" />
+  <link rel="stylesheet" href="/dashboard/css/glyphicons/glyphicons.css" />
+  <link rel="stylesheet" href="/dashboard/css/font-awesome/css/font-awesome.min.css" />
+  <link rel="stylesheet" href="/dashboard/css/ionicons/css/ionicons.min.css" />
+  <link rel="stylesheet" href="/dashboard/css/bootstrap/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="/dashboard/css/styles/app.css" />
+  <link rel="stylesheet" href="/dashboard/css/styles/style.css" />
+  <link rel="stylesheet" href="/dashboard/css/styles/font.css" />
+  <link rel="stylesheet" href="/dashboard/css/pca.css" />
+  <link rel="stylesheet" href="/admin/css/admin.css" />
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- SIDEBAR -->
+  <div id="aside" class="app-aside fade nav-dropdown black">
+    <div class="navside dk pca-admin-sidebar" data-layout="column">
+      <div class="navbar no-radius pca-admin-navbar">
+        <a href="/admin/" class="navbar-brand">
+          <i class="ion-ios-settings" style="font-size:1.4rem; margin-right:8px;"></i>
+          <span class="_600">PCA Admin</span>
+        </a>
+      </div>
+      <div data-flex class="hide-scroll">
+        <nav class="scroll nav-stacked nav-stacked-rounded nav-color">
+          <ul class="nav" data-ui-nav>
+            <li class="nav-header hidden-folded"><span class="text-xs">Administración</span></li>
+            <li><a href="/admin/"><span class="nav-icon"><i class="ion-ios-pulse"></i></span><span class="nav-text">Resumen global</span></a></li>
+            <li class="active"><a href="/admin/marcas.html"><span class="nav-icon"><i class="ion-ios-people"></i></span><span class="nav-text">Marcas</span></a></li>
+            <li><a href="/admin/script-generator.html"><span class="nav-icon"><i class="ion-code"></i></span><span class="nav-text">Generador Script</span></a></li>
+            <li><a href="/admin/reportes.html"><span class="nav-icon"><i class="ion-ios-paper"></i></span><span class="nav-text">Reportes</span></a></li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div id="content" class="app-content" role="main">
+
+    <!-- HEADER -->
+    <div class="app-header white bg b-b">
+      <div class="navbar">
+        <a data-toggle="modal" data-target="#aside" class="navbar-item pull-left hidden-lg-up p-r m-a-0">
+          <i class="ion-navicon"></i>
+        </a>
+        <div class="navbar-item pull-left">
+          <a href="/admin/" class="text-muted">Admin</a>
+          <span class="text-muted m-x-xs">/</span>
+          <a href="/admin/marcas.html" class="text-muted">Marcas</a>
+          <span class="text-muted m-x-xs">/</span>
+          <span class="_500" id="header-titulo">Nueva marca</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- BODY -->
+    <div class="app-body">
+      <div class="padding">
+
+        <div id="section-error" class="alert alert-danger hide m-b">
+          <i class="ion-alert-circled"></i> <span id="error-message"></span>
+        </div>
+
+        <!-- Formulario -->
+        <div class="row">
+          <div class="col-md-7">
+            <div class="box">
+              <div class="box-header b-b">
+                <h3 id="form-titulo">Nueva marca</h3>
+              </div>
+              <div class="box-body p-a">
+                <form id="form-marca" novalidate>
+
+                  <!-- Nombre -->
+                  <div class="form-group">
+                    <label for="input-name">Nombre <span class="text-danger">*</span></label>
+                    <input type="text" id="input-name" class="form-control" placeholder="ej: Yape" required maxlength="100" />
+                  </div>
+
+                  <!-- Slug (solo en crear) -->
+                  <div class="form-group" id="group-slug">
+                    <label for="input-slug">Slug <span class="text-danger">*</span></label>
+                    <input type="text" id="input-slug" class="form-control" placeholder="ej: yape" maxlength="50" />
+                    <small class="form-text text-muted" id="slug-preview"></small>
+                    <div id="slug-error" class="text-danger" style="display:none;font-size:0.85rem;"></div>
+                  </div>
+
+                  <!-- Color primario -->
+                  <div class="form-group">
+                    <label>Color primario <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                      <input type="color" id="input-color-picker" value="#6C3ADE"
+                             style="width:48px;height:38px;padding:2px;cursor:pointer;border:1px solid #ccc;border-radius:4px 0 0 4px;" />
+                      <input type="text" id="input-color-hex" class="form-control" value="#6C3ADE"
+                             placeholder="#RRGGBB" maxlength="7"
+                             style="border-left:0;" />
+                      <span class="input-group-addon" id="color-preview-box"
+                            style="width:38px;background:#6C3ADE;border-radius:0 4px 4px 0;">&nbsp;</span>
+                    </div>
+                    <div id="color-error" class="text-danger" style="display:none;font-size:0.85rem;"></div>
+                  </div>
+
+                  <!-- Logo URL -->
+                  <div class="form-group">
+                    <label for="input-logo">Logo URL</label>
+                    <input type="url" id="input-logo" class="form-control" placeholder="https://…" />
+                    <div class="m-t-xs" id="logo-preview" style="display:none;">
+                      <img id="logo-img" src="" alt="Preview logo"
+                           style="max-height:48px;max-width:120px;border:1px solid #ddd;border-radius:4px;padding:4px;"
+                           onerror="document.getElementById('logo-preview').style.display='none'" />
+                    </div>
+                  </div>
+
+                  <!-- Banner URL -->
+                  <div class="form-group">
+                    <label for="input-banner">Banner URL</label>
+                    <input type="url" id="input-banner" class="form-control" placeholder="https://…" />
+                    <div class="m-t-xs" id="banner-preview" style="display:none;">
+                      <img id="banner-img" src="" alt="Preview banner"
+                           style="max-height:60px;max-width:200px;border:1px solid #ddd;border-radius:4px;padding:4px;"
+                           onerror="document.getElementById('banner-preview').style.display='none'" />
+                    </div>
+                  </div>
+
+                  <!-- Universe ID -->
+                  <div class="form-group">
+                    <label for="input-universe">Universe ID</label>
+                    <input type="text" id="input-universe" class="form-control" placeholder="ej: 1234567890" />
+                  </div>
+
+                  <!-- Botones -->
+                  <div class="form-group m-t-md">
+                    <a href="/admin/marcas.html" class="btn btn-default m-r-sm">Cancelar</a>
+                    <button type="submit" class="btn btn-primary" id="btn-guardar">
+                      <i class="ion-checkmark"></i> Guardar
+                    </button>
+                    <a id="btn-ver-dashboard" href="#" target="_blank"
+                       class="btn btn-default m-l-sm" style="display:none;">
+                      <i class="ion-ios-analytics"></i> Dashboard
+                    </a>
+                    <a id="btn-ver-script" href="#"
+                       class="btn btn-default m-l-xs" style="display:none;">
+                      <i class="ion-code"></i> Script
+                    </a>
+                  </div>
+
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sección API Token (solo modo editar) -->
+          <div class="col-md-5" id="section-token" style="display:none;">
+            <div class="box">
+              <div class="box-header b-b">
+                <h3>API Token</h3>
+              </div>
+              <div class="box-body p-a">
+                <p class="text-muted">Token que usa el Script de Roblox para autenticarse.</p>
+                <div class="input-group m-b">
+                  <span id="token-display" class="form-control pca-token-hidden" style="background:#f5f5f5;">••••••••••••••••</span>
+                  <span class="input-group-btn">
+                    <button class="btn btn-default" type="button" id="btn-toggle-token" title="Mostrar/ocultar token">
+                      <i class="ion-eye" id="eye-token"></i>
+                    </button>
+                    <button class="btn btn-default" type="button" id="btn-copy-token" title="Copiar token">
+                      <i class="ion-ios-copy"></i>
+                    </button>
+                  </span>
+                </div>
+                <button class="btn btn-warning btn-sm" id="btn-regenerar" type="button">
+                  <i class="ion-refresh"></i> Regenerar token
+                </button>
+                <div id="new-token-box" class="alert alert-success m-t" style="display:none;">
+                  <strong>Nuevo token generado:</strong>
+                  <div id="new-token-value" class="m-t-xs" style="word-break:break-all;font-family:monospace;font-size:0.85rem;"></div>
+                  <button class="btn btn-xs btn-success m-t-xs" id="btn-copy-new-token">
+                    <i class="ion-ios-copy"></i> Copiar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="app-footer white bg p-a b-t">
+      <span class="text-sm text-muted">&copy; 2026 — Peru City Analytics Admin</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal confirmación de regeneración de token -->
+<div id="modal-regen" class="modal fade" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+        <h4 class="modal-title">Regenerar token</h4>
+      </div>
+      <div class="modal-body">
+        <p>¿Regenerar el token de esta marca?</p>
+        <p class="text-danger"><strong>El Script de Roblox instalado dejará de funcionar hasta que se actualice con el nuevo token.</strong></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-warning" id="btn-confirmar-regen">Regenerar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/dashboard/libs/jquery/dist/jquery.js"></script>
+<script src="/dashboard/libs/tether/dist/js/tether.min.js"></script>
+<script src="/dashboard/libs/bootstrap/dist/js/bootstrap.js"></script>
+<script src="/dashboard/libs/jQuery-Storage-API/jquery.storageapi.min.js"></script>
+<script src="/dashboard/libs/PACE/pace.min.js"></script>
+<script src="/dashboard/scripts/app.js"></script>
+<script src="/dashboard/scripts/ui-load.js"></script>
+<script src="/dashboard/scripts/ui-jp.js"></script>
+<script src="/dashboard/scripts/ui-nav.js"></script>
+<script src="/dashboard/scripts/ui-toggle-class.js"></script>
+<script src="/dashboard/js/config.js"></script>
+<script src="/admin/js/admin-api.js"></script>
+<script src="/admin/js/pages/marca-detalle.js"></script>
+</body>
+</html>

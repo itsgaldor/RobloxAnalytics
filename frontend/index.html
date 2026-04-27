@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Peru City Analytics</title>
+  <meta name="description" content="Dashboard de métricas de experiencias Roblox" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimal-ui" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+  <link rel="shortcut icon" href="/dashboard/images/logo.png">
+
+  <!-- Estilos de la plantilla Aside — rutas absolutas desde /dashboard/ -->
+  <link rel="stylesheet" href="/dashboard/css/animate.css/animate.min.css" />
+  <link rel="stylesheet" href="/dashboard/css/glyphicons/glyphicons.css" />
+  <link rel="stylesheet" href="/dashboard/css/font-awesome/css/font-awesome.min.css" />
+  <link rel="stylesheet" href="/dashboard/css/ionicons/css/ionicons.min.css" />
+  <link rel="stylesheet" href="/dashboard/css/bootstrap/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="/dashboard/css/styles/app.css" />
+  <link rel="stylesheet" href="/dashboard/css/styles/style.css" />
+  <link rel="stylesheet" href="/dashboard/css/styles/font.css" />
+
+  <!-- CSS custom de Peru City Analytics -->
+  <link rel="stylesheet" href="/dashboard/css/pca.css" />
+</head>
+<body>
+<div class="app" id="app">
+
+<!-- ===== LAYOUT START ===== -->
+
+  <!-- SIDEBAR -->
+  <div id="aside" class="app-aside fade nav-dropdown black">
+    <div class="navside dk" data-layout="column">
+
+      <div class="navbar no-radius">
+        <a href="#" class="navbar-brand">
+          <img id="brand-logo" src="" alt="Logo" style="max-height:40px; max-width:160px; object-fit:contain;">
+        </a>
+      </div>
+
+      <div data-flex class="hide-scroll">
+        <nav class="scroll nav-stacked nav-stacked-rounded nav-color">
+          <ul class="nav" data-ui-nav>
+            <li class="nav-header hidden-folded">
+              <span class="text-xs">Menú</span>
+            </li>
+            <li class="active">
+              <a href="#">
+                <span class="nav-icon"><i class="ion-ios-analytics"></i></span>
+                <span class="nav-text">Dashboard</span>
+              </a>
+            </li>
+            <li class="nav-divider"></li>
+            <li>
+              <a href="/admin/" title="Ir al backoffice">
+                <span class="nav-icon"><i class="ion-ios-settings"></i></span>
+                <span class="nav-text" style="font-size:11px;opacity:0.8;">Admin</span>
+              </a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+
+    </div>
+  </div>
+  <!-- / SIDEBAR -->
+
+  <!-- CONTENT -->
+  <div id="content" class="app-content" role="main">
+
+    <!-- HEADER -->
+    <div class="app-header white bg b-b">
+      <div class="navbar" data-pjax>
+
+        <a data-toggle="modal" data-target="#aside"
+           class="navbar-item pull-left hidden-lg-up p-r m-a-0">
+          <i class="ion-navicon"></i>
+        </a>
+
+        <!-- Banner + nombre de la marca -->
+        <div class="navbar-item pull-left" id="brand-banner-wrap">
+          <img id="brand-banner" src="" alt=""
+               style="max-height:44px; max-width:200px; border-radius:4px; object-fit:contain;">
+          <span id="brand-name" class="m-l _500 text-md"></span>
+        </div>
+
+        <!-- Navbar derecha: filtros + acciones -->
+        <ul class="nav navbar-nav pull-right">
+
+          <!-- Última actualización -->
+          <li class="nav-item hidden-xs-down">
+            <span id="last-updated" class="nav-item text-muted" title="Última actualización"></span>
+          </li>
+
+          <!-- Filtros de rango temporal -->
+          <li class="nav-item">
+            <div class="btn-group m-x-sm" role="group">
+              <button id="btn-range-day"   class="btn btn-sm white b-a" data-range="day">Hoy</button>
+              <button id="btn-range-week"  class="btn btn-sm white b-a btn-theme-active" data-range="week">Semana</button>
+              <button id="btn-range-month" class="btn btn-sm white b-a" data-range="month">Mes</button>
+            </div>
+          </li>
+
+          <!-- Botón Actualizar -->
+          <li class="nav-item">
+            <button id="btn-refresh" class="btn btn-sm white b-a m-x-xs" title="Actualizar datos">
+              <i class="ion-android-sync"></i>
+            </button>
+          </li>
+
+          <!-- Botón Exportar CSV -->
+          <li class="nav-item">
+            <button id="btn-export" class="btn btn-sm white b-a m-x-xs" title="Exportar CSV">
+              <i class="ion-ios-download"></i> CSV
+            </button>
+          </li>
+
+          <!-- Toggle dark/light mode -->
+          <li class="nav-item">
+            <button id="btn-theme-toggle" class="btn btn-sm white b-a m-x-xs" title="Cambiar tema">
+              <i class="ion-ios-sunny"></i>
+            </button>
+          </li>
+
+        </ul>
+
+      </div>
+    </div>
+    <!-- / HEADER -->
+
+    <!-- BODY -->
+    <div class="app-body">
+      <div class="padding">
+
+        <!-- Error global -->
+        <div id="section-error" class="alert alert-danger hide m-b">
+          <i class="ion-alert-circled"></i>
+          <span id="error-message"></span>
+        </div>
+
+        <!-- KPIs — no-gutter para que las cards se toquen como en la plantilla -->
+        <div id="section-kpis" class="row no-gutter b-b m-b">
+          <!-- Renderizado dinámico por dashboard.js -->
+        </div>
+
+        <!-- Gráficos -->
+        <div id="section-charts" class="row m-b">
+          <div class="col-sm-6">
+            <div class="box">
+              <div class="box-header b-b chart-header-flex">
+                <div>
+                  <h3>Sesiones por día</h3>
+                  <small class="text-muted">Total de sesiones (público + privado)</small>
+                </div>
+                <div class="btn-group btn-group-sm btn-group-metric" role="group" aria-label="Métrica del gráfico">
+                  <button class="btn btn-sm white b-a active-metric" data-metric="sessions">Sesiones</button>
+                  <button class="btn btn-sm white b-a" data-metric="dau">DAU</button>
+                  <button class="btn btn-sm white b-a" data-metric="avg_minutes">Tiempo</button>
+                </div>
+              </div>
+              <div class="box-body p-a">
+                <canvas id="chart-sessions" width="400" height="200"></canvas>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="box">
+              <div class="box-header b-b">
+                <h3>Público vs Privado</h3>
+                <small class="text-muted">Distribución por tipo de servidor</small>
+              </div>
+              <div class="box-body p-a">
+                <canvas id="chart-server-type" width="400" height="200"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabla de datos diarios -->
+        <div id="section-table">
+          <div class="box">
+            <div class="box-header b-b">
+              <h3>Datos diarios</h3>
+              <small class="text-muted">Desglose por día del período seleccionado</small>
+            </div>
+            <div class="table-responsive">
+              <table id="table-daily" class="table table-striped b-t b-b m-b-0">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Sesiones</th>
+                    <th>Usuarios únicos</th>
+                    <th>Tiempo promedio</th>
+                    <th>Horas totales</th>
+                    <th>Público</th>
+                    <th>Privado</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <!-- / BODY -->
+
+    <!-- FOOTER -->
+    <div class="app-footer white bg p-a b-t">
+      <div class="pull-right text-sm text-muted">Peru City Analytics v0.2.0</div>
+      <span class="text-sm text-muted">&copy; 2026 — Peru City Analytics</span>
+    </div>
+    <!-- / FOOTER -->
+
+  </div>
+  <!-- / CONTENT -->
+
+<!-- ===== LAYOUT END ===== -->
+
+</div><!-- / #app -->
+
+<!-- ===== SCRIPTS — orden exacto, rutas absolutas ===== -->
+
+<!-- Plantilla Aside — jQuery y librerías base -->
+<script src="/dashboard/libs/jquery/dist/jquery.js"></script>
+<script src="/dashboard/libs/tether/dist/js/tether.min.js"></script>
+<script src="/dashboard/libs/bootstrap/dist/js/bootstrap.js"></script>
+<script src="/dashboard/libs/jQuery-Storage-API/jquery.storageapi.min.js"></script>
+<script src="/dashboard/libs/PACE/pace.min.js"></script>
+
+<!-- Chart.js v2.2.1 — bundle incluye moment.js -->
+<script src="/dashboard/libs/chart.js/dist/Chart.bundle.min.js"></script>
+
+<!-- Scripts de comportamiento de la plantilla Aside -->
+<script src="/dashboard/scripts/app.js"></script>
+<script src="/dashboard/scripts/ui-load.js"></script>
+<script src="/dashboard/scripts/ui-jp.js"></script>
+<script src="/dashboard/scripts/ui-nav.js"></script>
+<script src="/dashboard/scripts/ui-toggle-class.js"></script>
+
+<!-- Peru City Analytics — en este orden -->
+<script src="/dashboard/js/config.js"></script>
+<script src="/dashboard/js/api.js"></script>
+<script src="/dashboard/js/whitelabel.js"></script>
+<script src="/dashboard/js/theme.js"></script>
+<script src="/dashboard/js/pages/dashboard.js"></script>
+
+</body>
+</html>

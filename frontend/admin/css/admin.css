@@ -1,0 +1,88 @@
+/* ============================================================
+   Peru City Analytics — Estilos del backoffice Admin
+   ============================================================ */
+
+/* ── Sidebar fijo oscuro del admin (no whitelabel) ── */
+.pca-admin-sidebar {
+  background-color: #2d3e50 !important;
+}
+.pca-admin-navbar {
+  background-color: #243040 !important;
+}
+.pca-admin-sidebar .nav-color .nav > li > a {
+  color: rgba(255,255,255,0.72) !important;
+}
+.pca-admin-sidebar .nav-color .nav > li.active > a,
+.pca-admin-sidebar .nav-color .nav > li > a:hover {
+  background-color: #1b2a38 !important;
+  color: #fff !important;
+}
+.pca-admin-sidebar .nav-header span {
+  color: rgba(255,255,255,0.38) !important;
+}
+.pca-admin-sidebar .navbar-brand {
+  color: #fff !important;
+  display: flex !important;
+  align-items: center;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.pca-admin-navbar .navbar-brand span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.92rem;
+  letter-spacing: 0.01em;
+}
+.pca-admin-navbar .navbar-brand i {
+  flex-shrink: 0;
+}
+
+/* ── Punto de color para la lista de marcas ── */
+.pca-color-dot {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  vertical-align: middle;
+  border: 1px solid rgba(0,0,0,0.15);
+  margin-right: 4px;
+}
+
+/* ── Token oculto ── */
+.pca-token-hidden {
+  letter-spacing: 2px;
+  font-size: 1rem;
+  color: #888;
+}
+
+/* ── Preview del Script de Lua ── */
+.pca-script-pre {
+  background: #1e2d3d;
+  color: #c8d8e4;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  padding: 16px;
+  max-height: 480px;
+  overflow-y: auto;
+  white-space: pre;
+  border-radius: 0 0 4px 4px;
+}
+
+/* ── Cards KPI admin ── */
+#section-kpis .padding {
+  min-height: 100px;
+}
+
+/* ── Tabla sin bordes rotos ── */
+.table td,
+.table th {
+  vertical-align: middle;
+}
+
+/* ── Botones de acción pequeños ── */
+.btn-xs {
+  padding: 2px 8px;
+  font-size: 0.78rem;
+}
