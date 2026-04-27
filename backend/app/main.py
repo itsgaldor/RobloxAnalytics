@@ -7,9 +7,8 @@ from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api.v1.router import api_router
 from app.config import settings
@@ -44,43 +43,6 @@ app.add_middleware(
 )
 
 
-class AdminAuthMiddleware(BaseHTTPMiddleware):
-    """
-    Protege todas las rutas /admin/* excepto /admin/login.html y los
-    endpoints de auth. Verifica la cookie de sesion en cada request.
-    """
-    EXEMPT_PATHS = [
-        "/admin/login.html",
-        "/api/v1/auth/",
-        "/health",
-    ]
-
-    async def dispatch(self, request: Request, call_next):
-        path = request.url.path
-
-        # Solo proteger rutas /admin/
-        if not path.startswith("/admin"):
-            return await call_next(request)
-
-        # Rutas exentas
-        if any(path.startswith(p) for p in self.EXEMPT_PATHS):
-            return await call_next(request)
-
-        # Verificar sesion
-        from app.api.v1.endpoints.auth import verify_session_token
-        token = request.cookies.get("pca_admin_session", "")
-        if not verify_session_token(token):
-            return RedirectResponse(
-                url=f"/admin/login.html?next={path}",
-                status_code=302,
-            )
-
-        return await call_next(request)
-
-
-app.add_middleware(AdminAuthMiddleware)
-
-
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """Manejador global de excepciones no controladas."""
@@ -99,15 +61,41 @@ async def health_check():
     return {"status": "ok", "version": settings.APP_VERSION, "environment": settings.ENVIRONMENT}
 
 
+# ── Resolucion del directorio frontend ────────────────────────────────────────
 _frontend_candidates = [
     Path("/app/frontend"),
     Path(__file__).parent.parent / "frontend",
     Path(__file__).parent.parent.parent / "frontend",
 ]
 _frontend_dir = next((p for p in _frontend_candidates if p.exists()), None)
+_admin_dir = (_frontend_dir / "admin") if _frontend_dir else None
 
+
+# ── Rutas explicitas del admin con verificacion de sesion ─────────────────────
+# FastAPI routes tienen prioridad sobre StaticFiles mounts.
+# Usamos rutas explicitas porque BaseHTTPMiddleware no intercepta
+# de forma confiable los requests a sub-aplicaciones montadas.
+
+def _check_admin_session(request: Request) -> bool:
+    """Retorna True si la cookie de sesion es valida."""
+    from app.api.v1.endpoints.auth import verify_session_token
+    token = request.cookies.get("pca_admin_session", "")
+    return verify_session_token(token)
+
+
+@app.get("/admin", include_in_schema=False)
+@app.get("/admin/", include_in_schema=False)
+async def admin_root(request: Request):
+    """Redirige a login si no hay sesion valida, sirve index.html si la hay."""
+    if not _check_admin_session(request):
+        return RedirectResponse(url="/admin/login.html", status_code=302)
+    if _admin_dir and (_admin_dir / "index.html").exists():
+        return FileResponse(str(_admin_dir / "index.html"))
+    return RedirectResponse(url="/admin/login.html", status_code=302)
+
+
+# ── Montaje de archivos estaticos ─────────────────────────────────────────────
 if _frontend_dir:
-    _admin_dir = _frontend_dir / "admin"
-    if _admin_dir.exists():
+    if _admin_dir and _admin_dir.exists():
         app.mount("/admin", StaticFiles(directory=str(_admin_dir), html=True), name="admin")
     app.mount("/dashboard", StaticFiles(directory=str(_frontend_dir), html=True), name="frontend")

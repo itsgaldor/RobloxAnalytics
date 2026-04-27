@@ -8,7 +8,7 @@ var _nombreParaDesactivar = '';
 
 document.addEventListener('DOMContentLoaded', function () {
   // Verificar sesion activa al cargar la pagina
-  fetch('/api/v1/auth/check')
+  fetch('/api/v1/auth/check', { credentials: 'same-origin' })
     .then(function(r) { return r.json(); })
     .then(function(data) {
       if (!data.authenticated) window.location.href = '/admin/login.html';

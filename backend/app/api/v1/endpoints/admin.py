@@ -160,10 +160,16 @@ local API_URL = "{api_url}/api/v1/{brand_slug}/events"
 local API_TOKEN = "{api_token}"
 local HEARTBEAT_INTERVAL = 60  -- segundos
 
--- Funcion para hashear userId (SHA-256 simplificado via string encoding)
+-- Hash deterministico djb2: mismo userId SIEMPRE produce el mismo resultado.
+-- Garantiza que DAU cuente usuarios unicos correctamente entre sesiones.
 local function hashUserId(userId)
-    -- Combinamos userId con un salt fijo para anonimizar
-    return HttpService:GenerateGUID(false):sub(1,8) .. tostring(userId):sub(-4)
+    local str = tostring(userId)
+    local h = 5381
+    for i = 1, #str do
+        h = ((h * 33) + string.byte(str, i)) % 0xFFFFFFFF
+    end
+    -- Formato: 8 hex chars del hash + ultimos 6 digitos del userId = 14 chars unicos
+    return string.format("%08x", h) .. str:sub(-6)
 end
 
 -- Detectar tipo de servidor
