@@ -142,4 +142,27 @@ function mostrarError(msg) {
 }
 
 function mostrarExito(msg) {
-  var div = document.getElement
+  var div = document.getElementById('section-success');
+  var txt = document.getElementById('success-message');
+  if (div && txt) { txt.textContent = msg; div.classList.remove('hide'); }
+  setTimeout(function() { if (div) div.classList.add('hide'); }, 3000);
+}
+
+function renderHealthBadge(health, lastEventAt) {
+  var map = {
+    ok:      { color: '#22c55e', label: 'Activo',              icon: 'ion-ios-checkmark-circle' },
+    warning: { color: '#f59e0b', label: 'Sin datos recientes',  icon: 'ion-ios-alert'            },
+    offline: { color: '#ef4444', label: 'Desconectado',         icon: 'ion-ios-close-circle'     }
+  };
+  var cfg = map[health] || map.offline;
+  var timeAgo = '';
+  if (lastEventAt) {
+    var diff = Math.floor((Date.now() - new Date(lastEventAt)) / 60000);
+    if (diff < 60)        timeAgo = ' · hace ' + diff + 'm';
+    else if (diff < 1440) timeAgo = ' · hace ' + Math.floor(diff / 60) + 'h';
+    else                  timeAgo = ' · hace ' + Math.floor(diff / 1440) + 'd';
+  }
+  return '<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;' +
+    'font-size:11px;font-weight:500;background:' + cfg.color + '22;color:' + cfg.color + ';">' +
+    '<i class="' + cfg.icon + '"></i>' + cfg.label + timeAgo + '</span>';
+}

@@ -1,24 +1,29 @@
 """
-Schemas Pydantic para la configuración pública de una marca.
+Schemas Pydantic para la configuracion publica de una marca.
 IMPORTANTE: Nunca incluir api_token ni universe_id en estos schemas.
 """
+from datetime import datetime
+from typing import Optional
+
 from pydantic import BaseModel
 
 
 class BrandConfig(BaseModel):
     """
-    Configuración pública de la marca.
-    Privacidad by design: api_token y universe_id están explícitamente excluidos.
+    Configuracion publica de la marca.
+    Privacidad by design: api_token y universe_id estan explicitamente excluidos.
     """
     slug: str
     name: str
-    logo_url: str | None
-    banner_url: str | None
+    logo_url: Optional[str]
+    banner_url: Optional[str]
     primary_color: str
+    health: str = "offline"
+    last_event_at: Optional[datetime] = None
 
 
 class BrandConfigResponse(BaseModel):
-    """Respuesta estándar del endpoint de configuración."""
+    """Respuesta estandar del endpoint de configuracion."""
     data: BrandConfig
     meta: dict = {}
-    error: str | None = None
+    error: Optional[str] = None

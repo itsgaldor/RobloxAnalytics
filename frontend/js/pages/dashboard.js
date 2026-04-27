@@ -16,6 +16,7 @@ var currentPrivSeries = [];
 // ─── INIT ──────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async function () {
   initTheme();
+  initSidebar();
 
   currentSlug = getSlugFromUrl();
   if (!currentSlug) {
@@ -26,6 +27,7 @@ document.addEventListener('DOMContentLoaded', async function () {
   try {
     brandConfig = await fetchBrandConfig(currentSlug);
     applyWhitelabel(brandConfig);
+    renderScriptStatus(brandConfig.health, brandConfig.last_event_at);
   } catch (e) {
     // Si la marca no existe, redirigir a la página de error 404
     if (e.message && e.message.indexOf('no existe') !== -1) {
@@ -320,6 +322,11 @@ function renderKPIs(data) {
   var prev = data['previous'] || null;   // puede ser null si compare=false
 
   var totalSessions = (pub.sessions || 0) + (priv.sessions || 0);
+  // Estado vacío
+  if (totalSessions === 0 && !(pub.mau || 0) && !(priv.mau || 0)) {
+    renderEmptyState('section-kpis', 'Sin sesiones en este período');
+    return;
+  }
   var totalDau      = parseFloat(pub.dau || 0) + parseFloat(priv.dau || 0);
   // MAU: ventana de 30 días fija — se suman ambos tipos
   var totalMau      = (pub.mau || 0) + (priv.mau || 0);
@@ -328,44 +335,54 @@ function renderKPIs(data) {
 
   var kpis = [
     {
-      valor:    formatNumber(totalSessions),
-      label:    'Sesiones totales',
-      icono:    'ion-ios-people',
-      pub:      formatNumber(pub.sessions),
-      priv:     formatNumber(priv.sessions),
-      varPct:   prev ? calcVariation(totalSessions, prev.sessions) : null
+      valor:     formatNumber(totalSessions),
+      rawTarget: totalSessions,
+      tipo:      'number',
+      label:     'Sesiones totales',
+      icono:     'ion-ios-people',
+      pub:       formatNumber(pub.sessions),
+      priv:      formatNumber(priv.sessions),
+      varPct:    prev ? calcVariation(totalSessions, prev.sessions) : null
     },
     {
-      valor:    formatNumber(Math.round(totalDau)),
-      label:    'Usuarios activos / día',
-      icono:    'ion-person',
-      pub:      formatNumber(Math.round(pub.dau || 0)),
-      priv:     formatNumber(Math.round(priv.dau || 0)),
-      varPct:   prev ? calcVariation(totalDau, prev.dau) : null
+      valor:     formatNumber(Math.round(totalDau)),
+      rawTarget: Math.round(totalDau),
+      tipo:      'number',
+      label:     'Usuarios activos / día',
+      icono:     'ion-person',
+      pub:       formatNumber(Math.round(pub.dau || 0)),
+      priv:      formatNumber(Math.round(priv.dau || 0)),
+      varPct:    prev ? calcVariation(totalDau, prev.dau) : null
     },
     {
-      valor:    formatNumber(totalMau),
-      label:    'Usuarios activos (30 días)',
-      icono:    'ion-calendar',
-      pub:      formatNumber(pub.mau),
-      priv:     formatNumber(priv.mau),
-      varPct:   prev ? calcVariation(totalMau, prev.mau) : null
+      valor:     formatNumber(totalMau),
+      rawTarget: totalMau,
+      tipo:      'number',
+      label:     'Usuarios activos (30 días)',
+      icono:     'ion-calendar',
+      pub:       formatNumber(pub.mau),
+      priv:      formatNumber(priv.mau),
+      varPct:    prev ? calcVariation(totalMau, prev.mau) : null
     },
     {
-      valor:    formatMinutes(avgMinutes),
-      label:    'Tiempo promedio sesión',
-      icono:    'ion-clock',
-      pub:      formatMinutes(pub.avg_session_minutes),
-      priv:     formatMinutes(priv.avg_session_minutes),
-      varPct:   prev ? calcVariation(avgMinutes, prev.avg_session_minutes) : null
+      valor:     formatMinutes(avgMinutes),
+      rawTarget: avgMinutes,
+      tipo:      'minutes',
+      label:     'Tiempo promedio sesión',
+      icono:     'ion-clock',
+      pub:       formatMinutes(pub.avg_session_minutes),
+      priv:      formatMinutes(priv.avg_session_minutes),
+      varPct:    prev ? calcVariation(avgMinutes, prev.avg_session_minutes) : null
     },
     {
-      valor:    formatNumber(Math.round(totalHours)) + 'h',
-      label:    'Horas totales de juego',
-      icono:    'ion-ios-timer',
-      pub:      formatNumber(Math.round(pub.total_hours || 0)) + 'h',
-      priv:     formatNumber(Math.round(priv.total_hours || 0)) + 'h',
-      varPct:   prev ? calcVariation(totalHours, prev.total_hours) : null
+      valor:     formatNumber(Math.round(totalHours)) + 'h',
+      rawTarget: Math.round(totalHours),
+      tipo:      'hours',
+      label:     'Horas totales de juego',
+      icono:     'ion-ios-timer',
+      pub:       formatNumber(Math.round(pub.total_hours || 0)) + 'h',
+      priv:      formatNumber(Math.round(priv.total_hours || 0)) + 'h',
+      varPct:    prev ? calcVariation(totalHours, prev.total_hours) : null
     }
   ];
 
@@ -377,7 +394,7 @@ function renderKPIs(data) {
     html += '<div class="b-r">' +
               '<div class="padding text-center">' +
                 '<div class="m-b-sm"><i class="' + kpi.icono + ' text-brand" style="font-size:28px;"></i></div>' +
-                '<h2 class="_600 m-t-xs m-b-xs">' + kpi.valor + '</h2>' +
+                '<h2 class="_600 m-t-xs m-b-xs kpi-value" data-target="' + (kpi.rawTarget || 0) + '" data-type="' + (kpi.tipo || 'number') + '">' + kpi.valor + '</h2>' +
                 '<p class="text-muted m-b-xs" style="font-size:0.82rem;">' + kpi.label + '</p>' +
                 '<div class="m-b-xs">' +
                   '<span class="label info m-x-xs">Púb: ' + kpi.pub + '</span>' +
@@ -389,6 +406,19 @@ function renderKPIs(data) {
   });
 
   section.innerHTML = html;
+
+  // Animar contadores numéricos
+  setTimeout(function() {
+    section.querySelectorAll('.kpi-value[data-target]').forEach(function(el) {
+      var target = parseFloat(el.dataset.target) || 0;
+      var type   = el.dataset.type || 'number';
+      animateCounter(el, target, 800, function(val) {
+        if (type === 'hours')   return Math.round(val) + 'h';
+        if (type === 'minutes') return formatMinutes(val);
+        return formatNumber(Math.round(val));
+      });
+    });
+  }, 50);
 }
 
 // ─── CHARTS ───────────────────────────────────────────────────────────────
@@ -609,4 +639,63 @@ function renderTable(rows) {
   });
 
   tbody.innerHTML = html;
+}
+
+// ─── SCRIPT STATUS BADGE ─────────────────────────────────────────────────
+
+function renderScriptStatus(health, lastEventAt) {
+  var el = document.getElementById('script-status');
+  if (!el) return;
+
+  var configs = {
+    ok:      { color: '#22c55e', icon: 'ion-ios-checkmark-circle', label: 'Script activo',        bg: 'rgba(34,197,94,0.15)'  },
+    warning: { color: '#f59e0b', icon: 'ion-ios-alert',            label: 'Sin datos recientes',   bg: 'rgba(245,158,11,0.15)' },
+    offline: { color: '#ef4444', icon: 'ion-ios-close-circle',     label: 'Script desconectado',   bg: 'rgba(239,68,68,0.15)'  }
+  };
+  var cfg = configs[health] || configs.offline;
+
+  var timeAgo = 'nunca conectado';
+  if (lastEventAt) {
+    var diff = Math.floor((Date.now() - new Date(lastEventAt)) / 60000);
+    if (diff < 60)   timeAgo = 'hace ' + diff + ' min';
+    else if (diff < 1440) timeAgo = 'hace ' + Math.floor(diff / 60) + 'h';
+    else              timeAgo = 'hace ' + Math.floor(diff / 1440) + 'd';
+  }
+
+  el.innerHTML =
+    '<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:99px;' +
+    'background:' + cfg.bg + ';border:1px solid ' + cfg.color + '33;font-size:11px;font-weight:500;' +
+    'color:' + cfg.color + ';cursor:default;" title="Último dato recibido: ' + timeAgo + '">' +
+    '<i class="' + cfg.icon + '" style="font-size:13px;"></i>' +
+    cfg.label +
+    '<span style="opacity:0.7;font-weight:400;">(' + timeAgo + ')</span>' +
+    '</span>';
+}
+
+// ─── ANIMACIÓN DE CONTADOR ────────────────────────────────────────────────
+
+function animateCounter(element, targetValue, duration, formatter) {
+  var startTime = null;
+  function update(currentTime) {
+    if (!startTime) startTime = currentTime;
+    var elapsed = currentTime - startTime;
+    var progress = Math.min(elapsed / duration, 1);
+    var eased = 1 - Math.pow(1 - progress, 3);
+    var current = Math.round(targetValue * eased);
+    element.textContent = formatter(current);
+    if (progress < 1) requestAnimationFrame(update);
+  }
+  requestAnimationFrame(update);
+}
+
+// ─── ESTADOS VACÍOS ───────────────────────────────────────────────────────
+
+function renderEmptyState(containerId, message) {
+  var el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML =
+    '<div style="text-align:center;padding:48px 24px;color:var(--text-muted,#94a3b8);width:100%;">' +
+    '<i class="ion-ios-analytics-outline" style="font-size:48px;opacity:0.3;display:block;margin-bottom:12px;"></i>' +
+    '<p style="font-size:14px;margin:0;">' + message + '</p>' +
+    '</div>';
 }

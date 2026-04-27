@@ -83,7 +83,7 @@ function renderTablaMarcas(brands) {
   var html = '';
   brands.forEach(function (b) {
     var m      = b.week_metrics || {};
-    var badge  = healthBadge(b.health);
+    var badge  = renderHealthBadge(b.health, b.last_event_at);
     var logo   = b.logo_url
       ? '<img src="' + esc(b.logo_url) + '" alt="' + esc(b.name) + '" style="height:28px;width:28px;object-fit:contain;border-radius:3px;">'
       : '<span class="text-muted">—</span>';
@@ -120,11 +120,7 @@ function renderTablaMarcas(brands) {
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────
 
-function healthBadge(health) {
-  if (health === 'ok')      return '<span class="label label-success">Activo</span>';
-  if (health === 'warning') return '<span class="label label-warning">Sin datos recientes</span>';
-  return '<span class="label label-danger">Sin conexión</span>';
-}
+
 
 function fmt(n) {
   if (n === null || n === undefined || isNaN(n)) return '—';
@@ -152,4 +148,25 @@ function esc(str) {
 function mostrarError(msg) {
   var div = document.getElementById('section-error');
   var txt = document.getElementById('error-message');
-  if (div && txt) { txt.text
+  if (div && txt) { txt.textContent = msg; div.classList.remove('hide'); }
+  console.error('[Admin]', msg);
+}
+
+function renderHealthBadge(health, lastEventAt) {
+  var map = {
+    ok:      { color: '#22c55e', label: 'Activo',              icon: 'ion-ios-checkmark-circle' },
+    warning: { color: '#f59e0b', label: 'Sin datos recientes',  icon: 'ion-ios-alert'            },
+    offline: { color: '#ef4444', label: 'Desconectado',         icon: 'ion-ios-close-circle'     }
+  };
+  var cfg = map[health] || map.offline;
+  var timeAgo = '';
+  if (lastEventAt) {
+    var diff = Math.floor((Date.now() - new Date(lastEventAt)) / 60000);
+    if (diff < 60)        timeAgo = ' · hace ' + diff + 'm';
+    else if (diff < 1440) timeAgo = ' · hace ' + Math.floor(diff / 60) + 'h';
+    else                  timeAgo = ' · hace ' + Math.floor(diff / 1440) + 'd';
+  }
+  return '<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;' +
+    'font-size:11px;font-weight:500;background:' + cfg.color + '22;color:' + cfg.color + ';">' +
+    '<i class="' + cfg.icon + '"></i>' + cfg.label + timeAgo + '</span>';
+}

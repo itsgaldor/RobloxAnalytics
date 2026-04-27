@@ -129,4 +129,10 @@ function applyWhitelabel(config) {
     }
   `;
   document.head.appendChild(style);
+  // Actualizar theme-color del browser con el color de la marca
+  var themeColorMeta = document.querySelector('meta[name="theme-color"]');
+  if (themeColorMeta && config.primary_color) {
+    themeColorMeta.setAttribute('content', config.primary_color);
+  }
+
 }

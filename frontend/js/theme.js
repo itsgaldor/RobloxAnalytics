@@ -53,3 +53,27 @@ function _updateThemeIcon(isDark) {
     document.documentElement.classList.add('dark-init');
   }
 })();
+
+/**
+ * Sidebar colapsable — toggle + persistencia en localStorage.
+ */
+function initSidebar() {
+  // Restaurar preferencia guardada
+  var pref = localStorage.getItem('pca-sidebar');
+  var app = document.querySelector('.app') || document.getElementById('app');
+  if (app && pref === 'folded') {
+    app.classList.add('folded');
+  }
+
+  // Conectar botón hamburguesa del navbar
+  var toggleBtn = document.querySelector('[data-toggle="modal"][data-target="#aside"], .navbar-toggle, #btn-sidebar-toggle');
+  if (toggleBtn && app) {
+    // Reemplazar el comportamiento modal por el toggle de folded
+    toggleBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var isFolded = app.classList.toggle('folded');
+      localStorage.setItem('pca-sidebar', isFolded ? 'folded' : 'expanded');
+    }, true);
+  }
+}

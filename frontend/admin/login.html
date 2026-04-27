@@ -2,33 +2,32 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Peru City Analytics — Admin</title>
-  <link rel="shortcut icon" href="/dashboard/images/logo.png">
-  <link rel="stylesheet" href="/dashboard/css/bootstrap/dist/css/bootstrap.min.css">
-  <link rel="stylesheet" href="/dashboard/css/animate.css/animate.min.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%232d3e50'/><text y='.9em' font-size='70' x='15'>📊</text></svg>">
   <link rel="stylesheet" href="/dashboard/css/ionicons/css/ionicons.min.css">
-  <link rel="stylesheet" href="/dashboard/css/styles/app.css">
-  <link rel="stylesheet" href="/dashboard/css/pca.css">
   <style>
-    html, body {
-      height: 100%;
-      margin: 0;
-    }
-    .login-wrap {
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
       min-height: 100vh;
+      background: #1e2d3d;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 24px 16px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
+
     .login-card {
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 40px 36px;
       width: 100%;
-      max-width: 360px;
-      padding: 36px 32px 28px;
-      border-radius: 10px;
+      max-width: 380px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
     }
-    .login-icon-wrap {
+
+    .login-logo {
       width: 56px;
       height: 56px;
       background: #2d3e50;
@@ -36,93 +35,173 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: 0 auto 14px;
+      margin: 0 auto 16px;
     }
-    .dark .login-icon-wrap { background: #1e2d3d; }
-    .login-card .form-control {
-      height: 42px;
+
+    .login-logo i {
+      font-size: 28px;
+      color: #ffffff;
+    }
+
+    .login-title {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    .login-title h4 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1e2d3d;
+      margin-bottom: 4px;
+    }
+
+    .login-title p {
+      font-size: 13px;
+      color: #64748b;
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: #475569;
+      margin-bottom: 6px;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 10px 14px;
       font-size: 14px;
+      color: #1e293b;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
     }
+
+    .form-control:focus {
+      border-color: #2d3e50;
+      box-shadow: 0 0 0 3px rgba(45,62,80,0.12);
+      background: #ffffff;
+    }
+
+    .form-control::placeholder {
+      color: #94a3b8;
+    }
+
     .btn-login {
       width: 100%;
       padding: 11px;
-      background: #2d3e50;
-      color: #fff;
-      border: none;
-      border-radius: 4px;
+      margin-top: 8px;
       font-size: 14px;
       font-weight: 500;
+      color: #ffffff;
+      background: #2d3e50;
+      border: none;
+      border-radius: 6px;
       cursor: pointer;
-      transition: background 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background 0.15s, transform 0.1s;
     }
-    .btn-login:hover { background: #1e2d3d; }
-    .dark .btn-login { background: #3a5068; }
-    .dark .btn-login:hover { background: #2d3e50; }
+
+    .btn-login:hover {
+      background: #1e2d3d;
+    }
+
+    .btn-login:active {
+      transform: scale(0.99);
+    }
+
+    .alert-error {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 6px;
+      padding: 10px 14px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      color: #dc2626;
+      display: none;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .login-footer {
+      text-align: center;
+      margin-top: 24px;
+      font-size: 11px;
+      color: #94a3b8;
+    }
   </style>
 </head>
 <body>
+  <div class="login-card">
 
-<div class="login-wrap">
-  <div class="login-card box-color box-shadow-z5">
-
-    <!-- Logo -->
-    <div class="text-center m-b-lg">
-      <div class="login-icon-wrap">
-        <i class="ion-ios-analytics" style="font-size:28px;color:#fff;"></i>
-      </div>
-      <h4 class="_600 m-b-0">Peru City Analytics</h4>
-      <p class="text-muted" style="font-size:13px;margin-top:4px;">Acceso al backoffice</p>
+    <div class="login-logo">
+      <i class="ion-ios-analytics"></i>
     </div>
 
-    <!-- Error -->
-    <div id="login-error" class="alert alert-danger m-b" style="display:none;">
-      <i class="ion-alert-circled"></i> Usuario o contrasena incorrectos
+    <div class="login-title">
+      <h4>Peru City Analytics</h4>
+      <p>Acceso al backoffice</p>
     </div>
 
-    <!-- Form -->
+    <div class="alert-error" id="login-error">
+      <i class="ion-alert-circled"></i>
+      Usuario o contraseña incorrectos
+    </div>
+
     <form method="POST" action="/api/v1/auth/login">
-      <div class="form-group m-b">
+      <div class="form-group">
+        <label for="username">Usuario</label>
         <input
           type="text"
+          id="username"
           name="username"
           class="form-control"
-          placeholder="Usuario"
+          placeholder="admin"
           autocomplete="username"
           required
           autofocus
         >
       </div>
-      <div class="form-group" style="margin-bottom:20px;">
+      <div class="form-group">
+        <label for="password">Contraseña</label>
         <input
           type="password"
+          id="password"
           name="password"
           class="form-control"
-          placeholder="Contrasena"
+          placeholder="••••••••"
           autocomplete="current-password"
           required
         >
       </div>
       <button type="submit" class="btn-login">
-        <i class="ion-log-in"></i> Ingresar
+        <i class="ion-log-in"></i>
+        Ingresar
       </button>
     </form>
 
-    <p class="text-center text-muted m-t m-b-0" style="font-size:11px;">
-      &copy; 2026 Peru City Analytics
-    </p>
+    <div class="login-footer">
+      &copy; 2026 &mdash; Peru City Analytics
+    </div>
 
   </div>
-</div>
 
-<script>
-  // Mostrar error si viene ?error=1
-  if (new URLSearchParams(window.location.search).get('error')) {
-    document.getElementById('login-error').style.display = 'block';
-  }
-  // Aplicar dark mode consistente con el resto del admin
-  var theme = localStorage.getItem('pca-theme') || 'dark';
-  if (theme === 'dark') document.body.classList.add('dark');
-</script>
-
+  <script>
+    // Mostrar error si viene ?error=1
+    if (new URLSearchParams(window.location.search).get('error')) {
+      const el = document.getElementById('login-error');
+      el.style.display = 'flex';
+    }
+  </script>
 </body>
 </html>
