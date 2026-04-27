@@ -16,6 +16,14 @@ config = context.config
 
 # Leer URL desde variable de entorno si está disponible
 db_url = os.environ.get("DATABASE_URL") or config.get_main_option("sqlalchemy.url")
+
+# Railway genera URLs con prefijo postgres:// o postgresql://.
+# asyncpg requiere postgresql+asyncpg://. Se convierte automáticamente.
+if db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql+asyncpg://", 1)
+elif db_url.startswith("postgresql://") and "+asyncpg" not in db_url:
+    db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
 config.set_main_option("sqlalchemy.url", db_url)
 
 if config.config_file_name is not None:
