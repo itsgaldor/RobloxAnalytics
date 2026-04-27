@@ -4,6 +4,7 @@ Todas las variables se leen desde el archivo .env usando pydantic-settings.
 """
 from typing import Optional
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -25,6 +26,19 @@ class Settings(BaseSettings):
 
     # CORS — lista separada por comas; "*" permite todo (solo para dev)
     ALLOWED_ORIGINS: str = "*"
+
+    @field_validator("DATABASE_URL")
+    @classmethod
+    def fix_database_url(cls, v: str) -> str:
+        """
+        Railway genera URLs con prefijo 'postgres://' o 'postgresql://'.
+        asyncpg requiere 'postgresql+asyncpg://'. Se convierte automáticamente.
+        """
+        if v.startswith("postgres://"):
+            v = v.replace("postgres://", "postgresql+asyncpg://", 1)
+        elif v.startswith("postgresql://"):
+            v = v.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return v
 
     @property
     def is_development(self) -> bool:
