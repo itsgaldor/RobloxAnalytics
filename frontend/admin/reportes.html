@@ -37,7 +37,15 @@
             <li><a href="/admin/marcas.html"><span class="nav-icon"><i class="ion-ios-people"></i></span><span class="nav-text">Marcas</span></a></li>
             <li><a href="/admin/script-generator.html"><span class="nav-icon"><i class="ion-code"></i></span><span class="nav-text">Generador Script</span></a></li>
             <li class="active"><a href="/admin/reportes.html"><span class="nav-icon"><i class="ion-ios-paper"></i></span><span class="nav-text">Reportes</span></a></li>
-          </ul>
+            <li class="nav-item">
+            <form method="POST" action="/api/v1/auth/logout" style="display:inline;">
+              <button type="submit" class="btn btn-sm white b-a m-x-xs" title="Cerrar sesion">
+                <i class="ion-log-out"></i>
+                <span class="hidden-xs"> Salir</span>
+              </button>
+            </form>
+          </li>
+        </ul>
         </nav>
       </div>
     </div>

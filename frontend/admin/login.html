@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>Peru City Analytics — Admin</title>
+  <link rel="shortcut icon" href="/dashboard/images/logo.png">
+  <link rel="stylesheet" href="/dashboard/css/bootstrap/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/dashboard/css/animate.css/animate.min.css">
+  <link rel="stylesheet" href="/dashboard/css/ionicons/css/ionicons.min.css">
+  <link rel="stylesheet" href="/dashboard/css/styles/app.css">
+  <link rel="stylesheet" href="/dashboard/css/pca.css">
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+    }
+    .login-wrap {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+    .login-card {
+      width: 100%;
+      max-width: 360px;
+      padding: 36px 32px 28px;
+      border-radius: 10px;
+    }
+    .login-icon-wrap {
+      width: 56px;
+      height: 56px;
+      background: #2d3e50;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 14px;
+    }
+    .dark .login-icon-wrap { background: #1e2d3d; }
+    .login-card .form-control {
+      height: 42px;
+      font-size: 14px;
+    }
+    .btn-login {
+      width: 100%;
+      padding: 11px;
+      background: #2d3e50;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-login:hover { background: #1e2d3d; }
+    .dark .btn-login { background: #3a5068; }
+    .dark .btn-login:hover { background: #2d3e50; }
+  </style>
+</head>
+<body>
+
+<div class="login-wrap">
+  <div class="login-card box-color box-shadow-z5">
+
+    <!-- Logo -->
+    <div class="text-center m-b-lg">
+      <div class="login-icon-wrap">
+        <i class="ion-ios-analytics" style="font-size:28px;color:#fff;"></i>
+      </div>
+      <h4 class="_600 m-b-0">Peru City Analytics</h4>
+      <p class="text-muted" style="font-size:13px;margin-top:4px;">Acceso al backoffice</p>
+    </div>
+
+    <!-- Error -->
+    <div id="login-error" class="alert alert-danger m-b" style="display:none;">
+      <i class="ion-alert-circled"></i> Usuario o contrasena incorrectos
+    </div>
+
+    <!-- Form -->
+    <form method="POST" action="/api/v1/auth/login">
+      <div class="form-group m-b">
+        <input
+          type="text"
+          name="username"
+          class="form-control"
+          placeholder="Usuario"
+          autocomplete="username"
+          required
+          autofocus
+        >
+      </div>
+      <div class="form-group" style="margin-bottom:20px;">
+        <input
+          type="password"
+          name="password"
+          class="form-control"
+          placeholder="Contrasena"
+          autocomplete="current-password"
+          required
+        >
+      </div>
+      <button type="submit" class="btn-login">
+        <i class="ion-log-in"></i> Ingresar
+      </button>
+    </form>
+
+    <p class="text-center text-muted m-t m-b-0" style="font-size:11px;">
+      &copy; 2026 Peru City Analytics
+    </p>
+
+  </div>
+</div>
+
+<script>
+  // Mostrar error si viene ?error=1
+  if (new URLSearchParams(window.location.search).get('error')) {
+    document.getElementById('login-error').style.display = 'block';
+  }
+  // Aplicar dark mode consistente con el resto del admin
+  var theme = localStorage.getItem('pca-theme') || 'dark';
+  if (theme === 'dark') document.body.classList.add('dark');
+</script>
+
+</body>
+</html>

@@ -27,12 +27,17 @@ class Settings(BaseSettings):
     # CORS — lista separada por comas; "*" permite todo (solo para dev)
     ALLOWED_ORIGINS: str = "*"
 
+    # Admin credentials — sobreescribir en produccion con variables de entorno
+    ADMIN_USERNAME: str = "admin"
+    ADMIN_PASSWORD: str = "changeme123"
+    ADMIN_SECRET_KEY: str = "dev-secret-key-change-in-production"
+
     @field_validator("DATABASE_URL")
     @classmethod
     def fix_database_url(cls, v: str) -> str:
         """
         Railway genera URLs con prefijo 'postgres://' o 'postgresql://'.
-        asyncpg requiere 'postgresql+asyncpg://'. Se convierte automáticamente.
+        asyncpg requiere 'postgresql+asyncpg://'. Se convierte automaticamente.
         """
         if v.startswith("postgres://"):
             v = v.replace("postgres://", "postgresql+asyncpg://", 1)

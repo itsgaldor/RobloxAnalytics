@@ -7,8 +7,9 @@ from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api.v1.router import api_router
 from app.config import settings
@@ -41,6 +42,43 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+class AdminAuthMiddleware(BaseHTTPMiddleware):
+    """
+    Protege todas las rutas /admin/* excepto /admin/login.html y los
+    endpoints de auth. Verifica la cookie de sesion en cada request.
+    """
+    EXEMPT_PATHS = [
+        "/admin/login.html",
+        "/api/v1/auth/",
+        "/health",
+    ]
+
+    async def dispatch(self, request: Request, call_next):
+        path = request.url.path
+
+        # Solo proteger rutas /admin/
+        if not path.startswith("/admin"):
+            return await call_next(request)
+
+        # Rutas exentas
+        if any(path.startswith(p) for p in self.EXEMPT_PATHS):
+            return await call_next(request)
+
+        # Verificar sesion
+        from app.api.v1.endpoints.auth import verify_session_token
+        token = request.cookies.get("pca_admin_session", "")
+        if not verify_session_token(token):
+            return RedirectResponse(
+                url=f"/admin/login.html?next={path}",
+                status_code=302,
+            )
+
+        return await call_next(request)
+
+
+app.add_middleware(AdminAuthMiddleware)
 
 
 @app.exception_handler(Exception)

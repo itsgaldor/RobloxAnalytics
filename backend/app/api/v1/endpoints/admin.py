@@ -17,16 +17,16 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from fastapi import Request,  APIRouter, Depends, HTTPException
+from fastapi import Request, APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencies import get_db
+from app.dependencies import get_db, require_admin_auth
 from app.models.models import Brand
 from app.services.metrics import get_combined_aggregate, _get_date_range
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_admin_auth)])
 
 # ──────────────────────────────────────────────────────────────────────────────
 # SCHEMAS PYDANTIC

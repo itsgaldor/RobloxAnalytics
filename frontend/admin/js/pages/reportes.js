@@ -9,6 +9,15 @@ var _progressMessages = {
 var _progressTimer = null;
 
 document.addEventListener('DOMContentLoaded', function () {
+  // Verificar sesion activa al cargar la pagina
+  fetch('/api/v1/auth/check')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data.authenticated) window.location.href = '/admin/login.html';
+    })
+    .catch(function() { window.location.href = '/admin/login.html'; });
+
+
   cargarMarcas();
   setDefaultDates();
 

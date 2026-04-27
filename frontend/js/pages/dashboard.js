@@ -422,6 +422,17 @@ function renderCharts(data) {
     }
   });
 
+  // ── Helper: stepSize inteligente según el máximo del dataset ─────────
+  function smartStep(values) {
+    var max = Math.max.apply(null, values.concat([1]));
+    if (max <= 10)   return 1;
+    if (max <= 50)   return 5;
+    if (max <= 200)  return 20;
+    if (max <= 500)  return 50;
+    if (max <= 2000) return 200;
+    return Math.ceil(max / 10 / 100) * 100;
+  }
+
   // ── Gráfico 1: Línea — sesiones totales diarias ───────────────────────
   var ctx1 = document.getElementById('chart-sessions');
   if (ctx1) {
@@ -487,7 +498,7 @@ function renderCharts(data) {
             ticks: {
               beginAtZero: true,
               fontSize: 11,
-              stepSize: 1,
+              stepSize: smartStep(totalByDay),
               callback: function (value) {
                 if (value % 1 !== 0) return '';
                 if (value >= 1000) return (value / 1000).toFixed(1) + 'k';
@@ -550,7 +561,7 @@ function renderCharts(data) {
           yAxes: [{ stacked: true, ticks: {
             beginAtZero: true,
             fontSize: 11,
-            stepSize: 1,
+            stepSize: smartStep(pubSeries.map(function(d){ return d.sessions||0; }).concat(privSeries.map(function(d){ return d.sessions||0; }))),
             callback: function (value) {
               if (value % 1 !== 0) return '';
               if (value >= 1000) return (value / 1000).toFixed(1) + 'k';

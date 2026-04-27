@@ -4,7 +4,7 @@ Centraliza la obtención de sesiones DB y validación de marcas.
 """
 from typing import AsyncGenerator
 
-from fastapi import Depends, Header, HTTPException, Path
+from fastapi import Depends, Header, HTTPException, Path, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -77,3 +77,11 @@ async def get_brand_with_auth(
             },
         )
     return brand
+
+
+def require_admin_auth(request: "Request"):
+    """Dependency para proteger endpoints de admin via cookie de sesion."""
+    from app.api.v1.endpoints.auth import verify_session_token
+    token = request.cookies.get("pca_admin_session", "")
+    if not verify_session_token(token):
+        raise HTTPException(status_code=401, detail="No autorizado")

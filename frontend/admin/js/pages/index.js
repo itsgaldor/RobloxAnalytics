@@ -6,6 +6,15 @@
 var _refreshTimer = null;
 
 document.addEventListener('DOMContentLoaded', function () {
+  // Verificar sesion activa al cargar la pagina
+  fetch('/api/v1/auth/check')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data.authenticated) window.location.href = '/admin/login.html';
+    })
+    .catch(function() { window.location.href = '/admin/login.html'; });
+
+
   cargarResumen();
   // Auto-refresh cada 5 minutos
   _refreshTimer = setInterval(cargarResumen, 5 * 60 * 1000);
@@ -143,6 +152,4 @@ function esc(str) {
 function mostrarError(msg) {
   var div = document.getElementById('section-error');
   var txt = document.getElementById('error-message');
-  if (div && txt) { txt.textContent = msg; div.classList.remove('hide'); }
-  console.error('[Admin]', msg);
-}
+  if (div && txt) { txt.text

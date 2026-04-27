@@ -9,6 +9,15 @@ var _slugActual   = '';
 var _nombreActual = '';
 
 document.addEventListener('DOMContentLoaded', async function () {
+  // Verificar sesion activa al cargar la pagina
+  fetch('/api/v1/auth/check')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data.authenticated) window.location.href = '/admin/login.html';
+    })
+    .catch(function() { window.location.href = '/admin/login.html'; });
+
+
   await cargarMarcas();
 
   // Cambio de marca en el select

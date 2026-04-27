@@ -7,6 +7,15 @@ var _slugParaDesactivar = '';
 var _nombreParaDesactivar = '';
 
 document.addEventListener('DOMContentLoaded', function () {
+  // Verificar sesion activa al cargar la pagina
+  fetch('/api/v1/auth/check')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data.authenticated) window.location.href = '/admin/login.html';
+    })
+    .catch(function() { window.location.href = '/admin/login.html'; });
+
+
   cargarMarcas();
 
   // Botón de confirmación en el modal
@@ -133,8 +142,4 @@ function mostrarError(msg) {
 }
 
 function mostrarExito(msg) {
-  var div = document.getElementById('section-success');
-  var txt = document.getElementById('success-message');
-  if (div && txt) { txt.textContent = msg; div.classList.remove('hide'); }
-  setTimeout(function () { if (div) div.classList.add('hide'); }, 4000);
-}
+  var div = document.getElement
