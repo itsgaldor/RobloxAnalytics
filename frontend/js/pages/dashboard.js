@@ -451,7 +451,7 @@ function renderCharts(data) {
       },
       options: {
         responsive: true,
-        maintainAspectRatio: true,
+        maintainAspectRatio: false,
         legend: { display: false },
         tooltips: {
           enabled: true,
@@ -489,7 +489,7 @@ function renderCharts(data) {
               fontSize: 11,
               stepSize: 1,
               callback: function (value) {
-                if (!Number.isInteger(value)) return null;
+                if (value % 1 !== 0) return '';
                 if (value >= 1000) return (value / 1000).toFixed(1) + 'k';
                 return value;
               }
@@ -524,12 +524,12 @@ function renderCharts(data) {
       },
       options: {
         responsive: true,
-        maintainAspectRatio: true,
+        maintainAspectRatio: false,
         legend: { display: true, position: 'top', labels: { fontSize: 11 } },
         tooltips: {
           enabled: true,
           mode: 'index',
-          int          intersect: false,
+          intersect: false,
           backgroundColor: 'rgba(0,0,0,0.75)',
           titleFontColor: '#ffffff',
           bodyFontColor: '#ffffff',
@@ -552,7 +552,7 @@ function renderCharts(data) {
             fontSize: 11,
             stepSize: 1,
             callback: function (value) {
-              if (!Number.isInteger(value)) return null;
+              if (value % 1 !== 0) return '';
               if (value >= 1000) return (value / 1000).toFixed(1) + 'k';
               return value;
             }
@@ -561,4 +561,41 @@ function renderCharts(data) {
       }
     });
   }
+}
+
+// ─── TABLA DIARIA ─────────────────────────────────────────────────────────
+
+function renderTable(rows) {
+  var tbody = document.querySelector('#table-daily tbody');
+  if (!tbody) return;
+
+  if (!rows || rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted p-a">Sin datos para el período seleccionado.</td></tr>';
+    return;
+  }
+
+  var html = '';
+  rows.forEach(function (row) {
+    var dateStr = row.date ? row.date.replace(/-/g, '/') : '—';
+    // Formato dd/mm/yyyy
+    var parts = row.date ? row.date.split('-') : [];
+    if (parts.length === 3) dateStr = parts[2] + '/' + parts[1] + '/' + parts[0];
+
+    var avgMin = row.avg_minutes || 0;
+    var timeStr = avgMin < 60
+      ? Math.round(avgMin) + ' min'
+      : Math.floor(avgMin / 60) + 'h ' + Math.round(avgMin % 60) + 'min';
+
+    html += '<tr>' +
+      '<td>' + dateStr + '</td>' +
+      '<td>' + (row.sessions || 0).toLocaleString('es-PE') + '</td>' +
+      '<td>' + (row.unique_users || 0).toLocaleString('es-PE') + '</td>' +
+      '<td>' + timeStr + '</td>' +
+      '<td>' + Math.round(row.total_hours || 0).toLocaleString('es-PE') + 'h</td>' +
+      '<td>' + (row.public_sessions || 0).toLocaleString('es-PE') + '</td>' +
+      '<td>' + (row.private_sessions || 0).toLocaleString('es-PE') + '</td>' +
+      '</tr>';
+  });
+
+  tbody.innerHTML = html;
 }

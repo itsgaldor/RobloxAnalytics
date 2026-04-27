@@ -107,10 +107,10 @@
 #section-charts { margin-top: 1.5rem; }
 #section-table  { margin-top: 1.5rem; }
 
-/* ── Limitar altura máxima de los gráficos ── */
-#chart-sessions,
-#chart-server-type {
-  max-height: 260px;
+/* ── Contenedor de gráficos — la altura se controla aquí, NO en el canvas ── */
+.chart-wrap {
+  position: relative;
+  height: 240px;
 }
 
 /* ── Tabla con columnas bien alineadas ── */
