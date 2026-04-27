@@ -487,7 +487,9 @@ function renderCharts(data) {
             ticks: {
               beginAtZero: true,
               fontSize: 11,
+              stepSize: 1,
               callback: function (value) {
+                if (!Number.isInteger(value)) return null;
                 if (value >= 1000) return (value / 1000).toFixed(1) + 'k';
                 return value;
               }
@@ -527,19 +529,15 @@ function renderCharts(data) {
         tooltips: {
           enabled: true,
           mode: 'index',
-          intersect: false,
+          int          intersect: false,
           backgroundColor: 'rgba(0,0,0,0.75)',
           titleFontColor: '#ffffff',
-          titleFontSize: 12,
           bodyFontColor: '#ffffff',
           bodyFontSize: 13,
-          borderColor: 'rgba(255,255,255,0.1)',
-          borderWidth: 1,
           cornerRadius: 4,
           xPadding: 10,
           yPadding: 8,
           callbacks: {
-            title: function (tooltipItems) { return tooltipItems[0].xLabel; },
             label: function (tooltipItem, data) {
               var label = data.datasets[tooltipItem.datasetIndex].label || '';
               return label + ': ' + Math.round(tooltipItem.yLabel).toLocaleString('es-PE');
@@ -549,36 +547,18 @@ function renderCharts(data) {
         hover: { mode: 'index', intersect: false },
         scales: {
           xAxes: [{ stacked: true, gridLines: { display: false }, ticks: { fontSize: 11 } }],
-          yAxes: [{ stacked: true, ticks: { beginAtZero: true, fontSize: 11 } }]
+          yAxes: [{ stacked: true, ticks: {
+            beginAtZero: true,
+            fontSize: 11,
+            stepSize: 1,
+            callback: function (value) {
+              if (!Number.isInteger(value)) return null;
+              if (value >= 1000) return (value / 1000).toFixed(1) + 'k';
+              return value;
+            }
+          }}]
         }
       }
     });
   }
-}
-
-// ─── TABLA DIARIA ─────────────────────────────────────────────────────────
-
-function renderTable(rows) {
-  var tbody = document.querySelector('#table-daily tbody');
-  if (!tbody) return;
-
-  if (!rows || rows.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted p-a">Sin datos para el período seleccionado.</td></tr>';
-    return;
-  }
-
-  var html = '';
-  rows.forEach(function (row) {
-    html += '<tr>' +
-              '<td>' + formatDate(row.date) + '</td>' +
-              '<td>' + formatNumber(row.sessions) + '</td>' +
-              '<td>' + formatNumber(row.unique_users) + '</td>' +
-              '<td>' + formatMinutes(row.avg_minutes) + '</td>' +
-              '<td>' + formatNumber(Math.round(row.total_hours)) + 'h</td>' +
-              '<td>' + formatNumber(row.public_sessions) + '</td>' +
-              '<td>' + formatNumber(row.private_sessions) + '</td>' +
-            '</tr>';
-  });
-
-  tbody.innerHTML = html;
 }
