@@ -1,18 +1,41 @@
 """
 Endpoint POST /api/v1/{brand_slug}/events
 Recibe eventos del Script de Roblox: join, leave, heartbeat.
+Incluye rate limiting por IP (slowapi) y por api_token (DB).
 """
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_brand_with_auth, get_db
+from app.limiter import limiter
 from app.models.models import Brand, Session as SessionModel
 from app.schemas.events import EventIn, EventResponse, EventType
 
 router = APIRouter()
+
+
+async def _check_token_rate_limit(
+    brand_id,
+    db: AsyncSession,
+    window_seconds: int = 60,
+    max_events: int = 200,
+) -> bool:
+    """
+    Verifica que la marca no exceda 200 eventos por minuto.
+    Cuenta eventos (sesiones creadas) en la ventana de tiempo.
+    Retorna True si está dentro del límite.
+    """
+    cutoff = datetime.now(timezone.utc) - timedelta(seconds=window_seconds)
+    result = await db.execute(
+        select(func.count(SessionModel.id))
+        .where(SessionModel.brand_id == brand_id)
+        .where(SessionModel.joined_at >= cutoff)
+    )
+    count = result.scalar() or 0
+    return count < max_events
 
 
 @router.post(
@@ -21,14 +44,23 @@ router = APIRouter()
     summary="Recibir evento de Roblox",
     description="Endpoint autenticado que recibe join, leave y heartbeat del Script de Roblox.",
 )
+@limiter.limit("120/minute")
 async def receive_event(
+    request: Request,
     event: EventIn,
     brand: Brand = Depends(get_brand_with_auth),
     db: AsyncSession = Depends(get_db),
 ) -> EventResponse:
-    timestamp = event.timestamp
-    if timestamp.tzinfo is None:
-        timestamp = timestamp.replace(tzinfo=timezone.utc)
+
+    # Rate limit por api_token (cuenta eventos del brand en el último minuto)
+    if not await _check_token_rate_limit(brand.id, db):
+        raise HTTPException(
+            status_code=429,
+            detail={"data": None, "meta": {}, "error": "Rate limit excedido. Máximo 200 eventos por minuto por marca."},
+        )
+
+    # Convertir Unix timestamp (int) a datetime UTC
+    timestamp = datetime.fromtimestamp(event.timestamp, tz=timezone.utc)
 
     if event.event_type == EventType.join:
         existing = await db.execute(

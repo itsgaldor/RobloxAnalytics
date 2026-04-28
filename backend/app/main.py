@@ -5,25 +5,75 @@ Configura el lifespan, middlewares y registra todos los routers.
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api.v1.router import api_router
 from app.config import settings
-from app.db.database import Base, get_engine, init_db
+from app.db.database import Base, get_engine, get_session_factory, init_db
+from app.limiter import limiter
+
+# ── Scheduler global ──────────────────────────────────────────────────────────
+_scheduler = AsyncIOScheduler()
+
+
+async def _run_cleanup():
+    """Wrapper que abre una sesión de DB y corre el cleanup de sesiones huérfanas."""
+    from app.services.session_cleanup import close_orphan_sessions
+
+    factory = get_session_factory()
+    if factory is None:
+        return
+    async with factory() as db:
+        await close_orphan_sessions(db)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Gestiona el ciclo de vida de la aplicacion: startup y shutdown."""
+    # Inicializar DB
     engine, _ = init_db(settings.DATABASE_URL)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+    # Iniciar scheduler de limpieza de sesiones
+    _scheduler.add_job(_run_cleanup, "interval", minutes=5, id="session_cleanup")
+    _scheduler.start()
+    print("[PCA] Scheduler iniciado — limpieza de sesiones cada 5 min")
+
     yield
+
+    # Shutdown
+    _scheduler.shutdown(wait=False)
     await engine.dispose()
 
+
+# ── Security Headers Middleware ───────────────────────────────────────────────
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Agrega headers de seguridad estándar a todas las respuestas."""
+
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        if request.url.scheme == "https":
+            response.headers["Strict-Transport-Security"] = (
+                "max-age=31536000; includeSubDomains"
+            )
+        return response
+
+
+# ── App ───────────────────────────────────────────────────────────────────────
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -34,6 +84,14 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Rate limiter
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Security headers
+app.add_middleware(SecurityHeadersMiddleware)
+
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
@@ -41,6 +99,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ── Exception handlers ────────────────────────────────────────────────────────
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Respuesta consistente para errores de validación Pydantic."""
+    return JSONResponse(
+        status_code=422,
+        content={"data": None, "error": "Payload inválido", "meta": {}},
+    )
 
 
 @app.exception_handler(Exception)
@@ -52,6 +121,8 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
+# ── Routers ───────────────────────────────────────────────────────────────────
+
 app.include_router(api_router, prefix="/api/v1")
 
 
@@ -62,6 +133,7 @@ async def health_check():
 
 
 # ── Resolucion del directorio frontend ────────────────────────────────────────
+
 _frontend_candidates = [
     Path("/app/frontend"),
     Path(__file__).parent.parent / "frontend",
@@ -72,9 +144,6 @@ _admin_dir = (_frontend_dir / "admin") if _frontend_dir else None
 
 
 # ── Rutas explicitas del admin con verificacion de sesion ─────────────────────
-# FastAPI routes tienen prioridad sobre StaticFiles mounts.
-# Usamos rutas explicitas porque BaseHTTPMiddleware no intercepta
-# de forma confiable los requests a sub-aplicaciones montadas.
 
 def _check_admin_session(request: Request) -> bool:
     """Retorna True si la cookie de sesion es valida."""
@@ -95,6 +164,7 @@ async def admin_root(request: Request):
 
 
 # ── Montaje de archivos estaticos ─────────────────────────────────────────────
+
 if _frontend_dir:
     if _admin_dir and _admin_dir.exists():
         app.mount("/admin", StaticFiles(directory=str(_admin_dir), html=True), name="admin")

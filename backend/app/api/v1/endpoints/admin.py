@@ -103,15 +103,8 @@ class BrandUpdateIn(BaseModel):
 # ──────────────────────────────────────────────────────────────────────────────
 
 def _compute_health(last_event_at: Optional[datetime]) -> str:
-    """
-    Calcula el estado de salud de la marca según la antigüedad del último evento.
-    - "ok"      → evento recibido hace menos de 2 horas
-    - "warning" → evento recibido hace 2-24 horas
-    - "offline" → no hay eventos o el último fue hace más de 24 horas
-    """
     if last_event_at is None:
         return "offline"
-    # Asegurar que tiene timezone para comparar
     if last_event_at.tzinfo is None:
         last_event_at = last_event_at.replace(tzinfo=timezone.utc)
     delta = datetime.now(timezone.utc) - last_event_at
@@ -143,8 +136,11 @@ async def _build_brand_out(db: AsyncSession, brand: Brand) -> BrandAdminOut:
     )
 
 
-LUA_SCRIPT_TEMPLATE = """\
--- ============================================
+# ──────────────────────────────────────────────────────────────────────────────
+# LUA SCRIPT TEMPLATE (hardened v2)
+# ──────────────────────────────────────────────────────────────────────────────
+
+LUA_SCRIPT_TEMPLATE = """-- ============================================
 -- Peru City Analytics - Script de tracking
 -- Marca: {brand_name}
 -- Generado: {generated_at}
@@ -152,13 +148,13 @@ LUA_SCRIPT_TEMPLATE = """\
 -- ============================================
 
 local HttpService = game:GetService("HttpService")
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
+local Players     = game:GetService("Players")
 
 -- Configuracion
-local API_URL = "{api_url}/api/v1/{brand_slug}/events"
+local API_URL   = "{api_url}/api/v1/{brand_slug}/events"
 local API_TOKEN = "{api_token}"
-local HEARTBEAT_INTERVAL = 60  -- segundos
+local MAX_RETRIES = 2
+local RETRY_WAIT  = 2   -- segundos entre reintentos
 
 -- Hash deterministico djb2: mismo userId SIEMPRE produce el mismo resultado.
 -- Garantiza que DAU cuente usuarios unicos correctamente entre sesiones.
@@ -168,7 +164,6 @@ local function hashUserId(userId)
     for i = 1, #str do
         h = ((h * 33) + string.byte(str, i)) % 0xFFFFFFFF
     end
-    -- Formato: 8 hex chars del hash + ultimos 6 digitos del userId = 14 chars unicos
     return string.format("%08x", h) .. str:sub(-6)
 end
 
@@ -181,54 +176,94 @@ local function getServerType()
     end
 end
 
--- Enviar evento al backend
+-- Enviar evento con manejo robusto: pcall + reintentos + backoff en 429
+-- Siempre silencioso - nunca afecta el hilo principal del juego
 local function sendEvent(eventType, sessionId, userIdHash)
-    local success, err = pcall(function()
-        HttpService:PostAsync(API_URL, HttpService:JSONEncode({{
-            event_type = eventType,
-            session_id = sessionId,
-            user_id_hash = userIdHash,
-            server_type = getServerType(),
-            timestamp = os.time()
-        }}), Enum.HttpContentType.ApplicationJson, false, {{
-            ["X-API-Token"] = API_TOKEN
-        }})
-    end)
-    if not success then
-        warn("[PCA] Error enviando evento " .. eventType .. ": " .. tostring(err))
-    end
-end
+    local payload = HttpService:JSONEncode({{
+        event_type   = eventType,
+        session_id   = sessionId,
+        user_id_hash = userIdHash,
+        server_type  = getServerType(),
+        timestamp    = os.time()
+    }})
 
--- Tracking por jugador
-local function trackPlayer(player)
-    local userIdHash = hashUserId(player.UserId)
-    local sessionId = HttpService:GenerateGUID(false)
-    local heartbeatConnection
+    local headers = {{
+        ["Content-Type"] = "application/json",
+        ["X-API-Token"]  = API_TOKEN
+    }}
 
-    -- Evento JOIN
-    sendEvent("join", sessionId, userIdHash)
+    for attempt = 1, MAX_RETRIES do
+        local ok, result = pcall(function()
+            return HttpService:RequestAsync({{
+                Url     = API_URL,
+                Method  = "POST",
+                Headers = headers,
+                Body    = payload
+            }})
+        end)
 
-    -- Heartbeat cada 60 segundos
-    local lastHeartbeat = os.time()
-    heartbeatConnection = RunService.Heartbeat:Connect(function()
-        if os.time() - lastHeartbeat >= HEARTBEAT_INTERVAL then
-            lastHeartbeat = os.time()
-            sendEvent("heartbeat", sessionId, userIdHash)
-        end
-    end)
-
-    -- Evento LEAVE
-    player.AncestryChanged:Connect(function()
-        if not player:IsDescendantOf(game) then
-            if heartbeatConnection then
-                heartbeatConnection:Disconnect()
+        if ok and result then
+            local status = result.StatusCode
+            if status == 200 or status == 201 then
+                return true
+            elseif status == 429 then
+                warn("[PCA] Rate limit alcanzado - esperando 30s")
+                task.wait(30)
+            elseif status == 401 then
+                warn("[PCA] Token invalido - verificar configuracion del Script")
+                return false
             end
-            sendEvent("leave", sessionId, userIdHash)
+        end
+
+        if attempt < MAX_RETRIES then
+            task.wait(RETRY_WAIT)
+        else
+            warn("[PCA] No se pudo enviar evento " .. eventType .. " tras " .. MAX_RETRIES .. " intentos")
+        end
+    end
+    return false
+end
+
+-- Heartbeat con intervalo adaptativo
+local function scheduleHeartbeat(sessionId, userIdHash)
+    local interval  = 60
+    local failCount = 0
+
+    task.spawn(function()
+        while task.wait(interval) do
+            local ok = sendEvent("heartbeat", sessionId, userIdHash)
+            if not ok then
+                failCount = failCount + 1
+                if failCount >= 3 then
+                    interval = 120
+                    warn("[PCA] Aumentando intervalo de heartbeat a 120s por fallos consecutivos")
+                end
+            else
+                failCount = 0
+                interval  = 60
+            end
         end
     end)
 end
 
--- Inicializar para jugadores ya conectados y nuevos
+-- Tracking completo de un jugador - corre en su propio task para no bloquear
+local function trackPlayer(player)
+    task.spawn(function()
+        local userIdHash = hashUserId(player.UserId)
+        local sessionId  = HttpService:GenerateGUID(false)
+
+        sendEvent("join", sessionId, userIdHash)
+        scheduleHeartbeat(sessionId, userIdHash)
+
+        player.AncestryChanged:Connect(function()
+            if not player:IsDescendantOf(game) then
+                sendEvent("leave", sessionId, userIdHash)
+            end
+        end)
+    end)
+end
+
+-- Inicializar para jugadores ya conectados y futuros
 Players.PlayerAdded:Connect(trackPlayer)
 for _, player in ipairs(Players:GetPlayers()) do
     trackPlayer(player)
@@ -277,7 +312,6 @@ async def list_brands(db: AsyncSession = Depends(get_db)):
     description="Crea una marca nueva. api_token se genera automáticamente. Error 409 si el slug ya existe.",
 )
 async def create_brand(body: BrandCreateIn, db: AsyncSession = Depends(get_db)):
-    # Verificar unicidad del slug
     existing = await db.execute(select(Brand).where(Brand.slug == body.slug))
     if existing.scalar_one_or_none():
         raise HTTPException(
@@ -324,7 +358,7 @@ async def get_brand_detail(brand_slug: str, db: AsyncSession = Depends(get_db)):
 @router.put(
     "/brands/{brand_slug}",
     summary="Actualizar marca",
-    description="Actualiza los campos editables de una marca. El slug y el api_token no son modificables aquí.",
+    description="Actualiza los campos editables de una marca.",
 )
 async def update_brand(brand_slug: str, body: BrandUpdateIn, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Brand).where(Brand.slug == brand_slug))
@@ -335,7 +369,6 @@ async def update_brand(brand_slug: str, body: BrandUpdateIn, db: AsyncSession = 
             detail={"data": None, "meta": {}, "error": f"Marca '{brand_slug}' no encontrada."},
         )
 
-    # Actualizar solo los campos enviados (PATCH-style dentro de PUT)
     if body.name is not None:
         brand.name = body.name
     if body.primary_color is not None:
@@ -368,11 +401,7 @@ async def deactivate_brand(brand_slug: str, db: AsyncSession = Depends(get_db)):
         )
     brand.active = False
     await db.commit()
-    return {
-        "data": {"slug": brand_slug, "active": False},
-        "meta": {},
-        "error": None,
-    }
+    return {"data": {"slug": brand_slug, "active": False}, "meta": {}, "error": None}
 
 
 @router.post(
@@ -424,12 +453,10 @@ async def get_script(
             detail={"data": None, "meta": {}, "error": f"Marca '{brand_slug}' no encontrada."},
         )
 
-    # En produccion se construye la URL desde el header Host del request.
-    # En desarrollo se usa API_BASE_URL del .env.
     from app.config import settings
     if settings.ENVIRONMENT == "production":
-        scheme = request.headers.get("x-forwarded-proto", "https")
-        host   = request.headers.get("host", "")
+        scheme  = request.headers.get("x-forwarded-proto", "https")
+        host    = request.headers.get("host", "")
         api_url = f"{scheme}://{host}"
     else:
         api_url = settings.API_BASE_URL
