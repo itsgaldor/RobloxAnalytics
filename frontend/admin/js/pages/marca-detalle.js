@@ -219,8 +219,18 @@ function triggerImagePreview(inputId, previewId, imgId) {
   var preview = document.getElementById(previewId);
   var img     = document.getElementById(imgId);
   if (val) {
-    img.src = val;
-    preview.style.display = '';
+    var tmpImg = new Image();
+    tmpImg.onload = function () {
+      img.src = val;
+      preview.style.display = '';
+      var dimsId = inputId === 'input-logo' ? 'logo-dims' : 'banner-dims';
+      var dims = document.getElementById(dimsId);
+      if (dims) dims.textContent = '(' + tmpImg.naturalWidth + ' × ' + tmpImg.naturalHeight + ' px)';
+    };
+    tmpImg.onerror = function () {
+      preview.style.display = 'none';
+    };
+    tmpImg.src = val;
   } else {
     preview.style.display = 'none';
   }

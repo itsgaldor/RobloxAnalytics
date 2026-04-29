@@ -108,8 +108,13 @@ function renderTablaMarcas(brands) {
           '</a>' +
           '<a href="/admin/script-generator.html?slug=' + esc(b.slug) + '" ' +
              'class="btn white b-a btn-sm" title="Ver Script">' +
-            '<i class="ion-ios-code"></i>' +
+            '<i class="ion-code"></i>' +
           '</a>' +
+          '<button onclick="confirmDelete(\'' + esc(b.slug) + '\',\'' + esc(b.name) + '\')" ' +
+             'class="btn btn-sm" title="Eliminar marca" ' +
+             'style="background:#fee2e2;color:#dc2626;border:1px solid #fecaca;">' +
+            '<i class="ion-trash-a"></i>' +
+          '</button>' +
         '</div>' +
       '</td>' +
     '</tr>';
@@ -169,4 +174,60 @@ function renderHealthBadge(health, lastEventAt) {
   return '<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;' +
     'font-size:11px;font-weight:500;background:' + cfg.color + '22;color:' + cfg.color + ';">' +
     '<i class="' + cfg.icon + '"></i>' + cfg.label + timeAgo + '</span>';
+}
+
+// ─── MODAL ELIMINAR MARCA ─────────────────────────────────────────────────
+
+var _deleteTargetSlug = '';
+
+function confirmDelete(slug, name) {
+  _deleteTargetSlug = slug;
+  document.getElementById('modal-delete-text').textContent =
+    '\u00bfEst\u00e1s seguro de que quer\u00e9s eliminar "' + name + '"?';
+  document.getElementById('modal-delete-slug').textContent = slug;
+  document.getElementById('modal-delete-confirm').value = '';
+  document.getElementById('btn-confirm-delete').disabled = true;
+  document.getElementById('btn-confirm-delete').style.opacity = '0.4';
+  document.getElementById('modal-delete').style.display = 'flex';
+
+  document.getElementById('modal-delete-confirm').oninput = function () {
+    var match = this.value.trim() === _deleteTargetSlug;
+    document.getElementById('btn-confirm-delete').disabled = !match;
+    document.getElementById('btn-confirm-delete').style.opacity = match ? '1' : '0.4';
+  };
+}
+
+function closeDeleteModal() {
+  document.getElementById('modal-delete').style.display = 'none';
+  _deleteTargetSlug = '';
+}
+
+async function executeDelete() {
+  if (!_deleteTargetSlug) return;
+  var btn = document.getElementById('btn-confirm-delete');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ion-load-c"></i> Eliminando…';
+  try {
+    await adminDeleteBrand(_deleteTargetSlug);
+    closeDeleteModal();
+    showToast('Marca eliminada correctamente', 'success');
+    if (typeof cargarResumen === 'function') await cargarResumen();
+    if (typeof cargarMarcas  === 'function') await cargarMarcas();
+  } catch (e) {
+    showToast('Error al eliminar: ' + e.message, 'error');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ion-trash-a"></i> Eliminar marca';
+  }
+}
+
+function showToast(message, type) {
+  var toast = document.createElement('div');
+  toast.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:3000;' +
+    'padding:12px 20px;border-radius:8px;font-size:13px;font-weight:500;' +
+    'box-shadow:0 4px 20px rgba(0,0,0,0.15);' +
+    'background:' + (type === 'success' ? '#22c55e' : '#ef4444') + ';' +
+    'color:#fff;';
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  setTimeout(function () { toast.remove(); }, 3000);
 }

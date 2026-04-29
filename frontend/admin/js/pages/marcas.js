@@ -3,9 +3,6 @@
  * Carga la lista, permite toggle de token y desactivación con confirmación.
  */
 
-var _slugParaDesactivar = '';
-var _nombreParaDesactivar = '';
-
 document.addEventListener('DOMContentLoaded', function () {
   // Verificar sesion activa al cargar la pagina
   fetch('/api/v1/auth/check', { credentials: 'same-origin' })
@@ -18,23 +15,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
   cargarMarcas();
 
-  // Botón de confirmación en el modal
-  document.getElementById('btn-confirmar-desactivar').addEventListener('click', async function () {
-    var btn = this;
-    btn.disabled = true;
-    btn.textContent = 'Desactivando…';
-    try {
-      await adminDeleteBrand(_slugParaDesactivar);
-      $('#modal-desactivar').modal('hide');
-      mostrarExito('Marca "' + _nombreParaDesactivar + '" desactivada correctamente.');
-      await cargarMarcas();
-    } catch (e) {
-      mostrarError('Error al desactivar: ' + e.message);
-    } finally {
-      btn.disabled = false;
-      btn.textContent = 'Desactivar';
-    }
-  });
 });
 
 async function cargarMarcas() {
@@ -89,10 +69,12 @@ function renderTablaMarcas(brands) {
         '<div class="btn-group btn-group-sm">' +
           '<a href="/dashboard/?brand=' + esc(b.slug) + '" target="_blank" class="btn white b-a btn-sm" title="Ver dashboard"><i class="ion-ios-analytics"></i></a>' +
           '<a href="/admin/marca-detalle.html?slug=' + esc(b.slug) + '" class="btn white b-a btn-sm" title="Editar"><i class="ion-edit"></i></a>' +
-          '<a href="/admin/script-generator.html?slug=' + esc(b.slug) + '" class="btn white b-a btn-sm" title="Ver Script"><i class="ion-ios-code"></i></a>' +
-          (b.active
-            ? '<button class="btn btn-danger btn-sm" onclick="confirmarDesactivar(\'' + esc(b.slug) + '\',\'' + esc(b.name) + '\')" title="Desactivar"><i class="ion-close-round"></i></button>'
-            : '') +
+          '<a href="/admin/script-generator.html?slug=' + esc(b.slug) + '" class="btn white b-a btn-sm" title="Ver Script"><i class="ion-code"></i></a>' +
+          '<button onclick="confirmDelete(\'' + esc(b.slug) + '\',\'' + esc(b.name) + '\')" ' +
+             'class="btn btn-sm" title="Eliminar marca" ' +
+             'style="background:#fee2e2;color:#dc2626;border:1px solid #fecaca;">' +
+            '<i class="ion-trash-a"></i>' +
+          '</button>' +
         '</div>' +
       '</td>' +
     '</tr>';
@@ -115,16 +97,6 @@ function toggleToken(slug) {
   if (eye) {
     eye.className = visible ? 'ion-eye' : 'ion-eye-disabled';
   }
-}
-
-// ─── MODAL DE DESACTIVACIÓN ───────────────────────────────────────────────
-
-function confirmarDesactivar(slug, nombre) {
-  _slugParaDesactivar    = slug;
-  _nombreParaDesactivar  = nombre;
-  document.getElementById('modal-desactivar-texto').textContent =
-    '¿Desactivar "' + nombre + '"? El dashboard dejará de ser accesible.';
-  $('#modal-desactivar').modal('show');
 }
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────
@@ -165,4 +137,60 @@ function renderHealthBadge(health, lastEventAt) {
   return '<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;' +
     'font-size:11px;font-weight:500;background:' + cfg.color + '22;color:' + cfg.color + ';">' +
     '<i class="' + cfg.icon + '"></i>' + cfg.label + timeAgo + '</span>';
+}
+
+// ─── MODAL ELIMINAR MARCA ─────────────────────────────────────────────────
+
+var _deleteTargetSlug = '';
+
+function confirmDelete(slug, name) {
+  _deleteTargetSlug = slug;
+  document.getElementById('modal-delete-text').textContent =
+    '\u00bfEst\u00e1s seguro de que quer\u00e9s eliminar "' + name + '"?';
+  document.getElementById('modal-delete-slug').textContent = slug;
+  document.getElementById('modal-delete-confirm').value = '';
+  document.getElementById('btn-confirm-delete').disabled = true;
+  document.getElementById('btn-confirm-delete').style.opacity = '0.4';
+  document.getElementById('modal-delete').style.display = 'flex';
+
+  document.getElementById('modal-delete-confirm').oninput = function () {
+    var match = this.value.trim() === _deleteTargetSlug;
+    document.getElementById('btn-confirm-delete').disabled = !match;
+    document.getElementById('btn-confirm-delete').style.opacity = match ? '1' : '0.4';
+  };
+}
+
+function closeDeleteModal() {
+  document.getElementById('modal-delete').style.display = 'none';
+  _deleteTargetSlug = '';
+}
+
+async function executeDelete() {
+  if (!_deleteTargetSlug) return;
+  var btn = document.getElementById('btn-confirm-delete');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ion-load-c"></i> Eliminando…';
+  try {
+    await adminDeleteBrand(_deleteTargetSlug);
+    closeDeleteModal();
+    showToast('Marca eliminada correctamente', 'success');
+    if (typeof cargarResumen === 'function') await cargarResumen();
+    if (typeof cargarMarcas  === 'function') await cargarMarcas();
+  } catch (e) {
+    showToast('Error al eliminar: ' + e.message, 'error');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ion-trash-a"></i> Eliminar marca';
+  }
+}
+
+function showToast(message, type) {
+  var toast = document.createElement('div');
+  toast.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:3000;' +
+    'padding:12px 20px;border-radius:8px;font-size:13px;font-weight:500;' +
+    'box-shadow:0 4px 20px rgba(0,0,0,0.15);' +
+    'background:' + (type === 'success' ? '#22c55e' : '#ef4444') + ';' +
+    'color:#fff;';
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  setTimeout(function () { toast.remove(); }, 3000);
 }

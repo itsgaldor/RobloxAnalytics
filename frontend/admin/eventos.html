@@ -69,16 +69,22 @@
             <li><a href="/admin/script-generator.html"><span class="nav-icon"><i class="ion-code"></i></span><span class="nav-text">Generador Script</span></a></li>
             <li><a href="/admin/reportes.html"><span class="nav-icon"><i class="ion-ios-paper"></i></span><span class="nav-text">Reportes</span></a></li>
             <li class="active"><a href="/admin/eventos.html"><span class="nav-icon"><i class="ion-ios-pulse"></i></span><span class="nav-text">Eventos</span></a></li>
-            <li class="nav-item">
-              <form method="POST" action="/api/v1/auth/logout" style="display:inline;">
-                <button type="submit" class="btn btn-sm white b-a m-x-xs" title="Cerrar sesion">
-                  <i class="ion-log-out"></i>
-                  <span class="hidden-xs"> Salir</span>
-                </button>
-              </form>
-            </li>
           </ul>
         </nav>
+      </div>
+      <div style="padding:10px 8px;border-top:1px solid rgba(255,255,255,0.12);">
+        <form method="POST" action="/api/v1/auth/logout">
+          <button type="submit" style="
+            width:100%;padding:8px 12px;background:rgba(255,255,255,0.08);
+            border:1px solid rgba(255,255,255,0.15);border-radius:6px;
+            color:rgba(255,255,255,0.85);font-size:12px;cursor:pointer;
+            display:flex;align-items:center;gap:8px;
+          " onmouseover="this.style.background='rgba(255,255,255,0.15)'"
+             onmouseout="this.style.background='rgba(255,255,255,0.08)'">
+            <i class="ion-log-out" style="font-size:15px;"></i>
+            <span>Salir</span>
+          </button>
+        </form>
       </div>
     </div>
   </div>

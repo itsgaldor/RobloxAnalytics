@@ -315,3 +315,22 @@
   .app-header .navbar-brand { max-width: 120px; overflow: hidden; }
   #last-updated, #script-status { display: none !important; }
 }
+
+/* ── Admin fixes ── */
+
+/* FIX 3: btn-group no debe cortar íconos */
+.btn-group { overflow: visible !important; }
+.btn-group .btn { position: relative; }
+
+/* FIX 4: Sidebar admin con logout pegado al fondo */
+.pca-admin-sidebar {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100vh !important;
+  overflow: hidden !important;
+}
+.pca-admin-sidebar [data-flex] {
+  flex: 1 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}

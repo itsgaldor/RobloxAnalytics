@@ -41,14 +41,6 @@
             <li><a href="/admin/script-generator.html"><span class="nav-icon"><i class="ion-code"></i></span><span class="nav-text">Generador Script</span></a></li>
             <li><a href="/admin/reportes.html"><span class="nav-icon"><i class="ion-ios-paper"></i></span><span class="nav-text">Reportes</span></a></li>
             <li><a href="/admin/eventos.html"><span class="nav-icon"><i class="ion-ios-pulse"></i></span><span class="nav-text">Eventos</span></a></li>
-            <li class="nav-item">
-            <form method="POST" action="/api/v1/auth/logout" style="display:inline;">
-              <button type="submit" class="btn btn-sm white b-a m-x-xs" title="Cerrar sesion">
-                <i class="ion-log-out"></i>
-                <span class="hidden-xs"> Salir</span>
-              </button>
-            </form>
-          </li>
         </ul>
         </nav>
       </div>
@@ -127,13 +119,6 @@
 </div>
 
 <!-- Modal de confirmación de desactivación -->
-<div id="modal-desactivar" class="modal fade" tabindex="-1" role="dialog">
-  <div class="modal-dialog" role="document">
-    <div class="modal-content">
-      <div class="modal-header">
-        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
-        <h4 class="modal-title">Desactivar marca</h4>
-      </div>
       <div class="modal-body">
         <p id="modal-desactivar-texto"></p>
         <p class="text-muted m-b-0">Los datos históricos se conservan.</p>
@@ -159,5 +144,59 @@
 <script src="/dashboard/js/config.js"></script>
 <script src="/admin/js/admin-api.js"></script>
 <script src="/admin/js/pages/marcas.js"></script>
+
+<!-- Modal eliminar marca -->
+<div id="modal-delete" style="
+  display:none; position:fixed; inset:0; z-index:2000;
+  background:rgba(0,0,0,0.5); align-items:center; justify-content:center;
+">
+  <div style="
+    background:#fff; border-radius:12px; padding:32px; max-width:420px;
+    width:90%; box-shadow:0 20px 60px rgba(0,0,0,0.3);
+  ">
+    <div style="text-align:center; margin-bottom:20px;">
+      <div style="
+        width:52px; height:52px; background:#fee2e2; border-radius:50%;
+        display:flex; align-items:center; justify-content:center; margin:0 auto 12px;
+      ">
+        <i class="ion-trash-a" style="font-size:24px;color:#dc2626;"></i>
+      </div>
+      <h5 style="font-size:16px;font-weight:600;color:#1e293b;margin:0 0 8px;">
+        Eliminar marca
+      </h5>
+      <p style="font-size:13px;color:#64748b;margin:0;" id="modal-delete-text">
+        &iquest;Est&aacute;s seguro de que quer&eacute;s eliminar esta marca?
+      </p>
+    </div>
+    <div style="
+      background:#fef9c3; border:1px solid #fde047; border-radius:8px;
+      padding:12px 14px; margin-bottom:20px; font-size:12px; color:#854d0e;
+    ">
+      <i class="ion-alert-circled"></i>
+      <strong>Atenci&oacute;n:</strong> Esta acci&oacute;n desactivar&aacute; el dashboard de la marca
+      y el Script de Roblox dejar&aacute; de enviar datos. Los datos hist&oacute;ricos
+      se conservan pero no ser&aacute;n accesibles desde el dashboard p&uacute;blico.
+    </div>
+    <div style="margin-bottom:20px;">
+      <label style="font-size:12px;color:#64748b;display:block;margin-bottom:6px;">
+        Escrib&iacute; <strong id="modal-delete-slug" style="color:#dc2626;"></strong> para confirmar:
+      </label>
+      <input type="text" id="modal-delete-confirm"
+        placeholder="Escrib&iacute; el slug aqu&iacute;"
+        style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;box-sizing:border-box;">
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button onclick="closeDeleteModal()"
+        style="padding:8px 20px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;color:#64748b;font-size:13px;cursor:pointer;">
+        Cancelar
+      </button>
+      <button id="btn-confirm-delete" onclick="executeDelete()" disabled
+        style="padding:8px 20px;border:none;border-radius:6px;background:#dc2626;color:#fff;font-size:13px;font-weight:500;cursor:pointer;opacity:0.4;">
+        <i class="ion-trash-a"></i> Eliminar marca
+      </button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
