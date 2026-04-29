@@ -76,6 +76,51 @@ def _get_previous_range(range_type: str) -> tuple[datetime, datetime]:
     return start, end
 
 
+async def _build_combined_time_series(
+    db: AsyncSession,
+    brand_id,
+    start: datetime,
+    end: datetime,
+) -> list:
+    """
+    Construye la serie temporal combinada (public + private) por dia.
+    Usada para mostrar el periodo anterior superpuesto en el grafico.
+    """
+    q = (
+        select(
+            func.date(SessionModel.joined_at).label("day"),
+            func.count().label("sessions"),
+            func.count(distinct(SessionModel.user_id_hash)).label("dau"),
+        )
+        .where(
+            and_(
+                SessionModel.brand_id == brand_id,
+                SessionModel.joined_at >= start,
+                SessionModel.joined_at <= end,
+            )
+        )
+        .group_by(func.date(SessionModel.joined_at))
+    )
+    rows = (await db.execute(q)).all()
+    by_day = {_as_date(r.day): (r.sessions, r.dau) for r in rows}
+
+    points = []
+    current = start.date()
+    end_date = end.date()
+    while current <= end_date:
+        sessions, dau = by_day.get(current, (0, 0))
+        points.append(
+            TimeSeriesPoint(
+                date=current,
+                sessions=sessions,
+                dau=dau,
+                avg_minutes=0.0,
+            )
+        )
+        current += timedelta(days=1)
+    return points
+
+
 async def get_combined_aggregate(
     db: AsyncSession,
     brand_id,
@@ -395,20 +440,163 @@ async def get_daily_metrics(
     # Garantizar todos los dias del rango
     all_days = []
     current = end.date()
-    stop = start.date()
-    while current >= stop:
-        if current in daily_rows:
-            all_days.append(daily_rows[current])
-        else:
-            all_days.append(DailyRow(
-                date=current,
-                sessions=0,
-                unique_users=0,
-                avg_minutes=0.0,
-                total_hours=0.0,
-                public_sessions=0,
-                private_sessions=0,
-            ))
+    while current >= start.date():
+        all_days.append(daily_rows.get(current, DailyRow(
+            date=current,
+            sessions=0,
+            unique_users=0,
+            avg_minutes=0.0,
+            total_hours=0.0,
+            public_sessions=0,
+            private_sessions=0,
+        )))
         current -= timedelta(days=1)
+    return all_days
 
+
+async def get_metrics_by_custom_range(
+    db: AsyncSession,
+    brand_id,
+    start: datetime,
+    end: datetime,
+) -> dict:
+    """
+    Como get_metrics_by_server_type pero con start/end explicitos.
+    Usado cuando el frontend envia un rango personalizado.
+    """
+    mau_start, mau_end = _get_mau_range()
+    results = {}
+
+    for server_type in ("public", "private"):
+        total_q = select(func.count()).where(
+            and_(
+                SessionModel.brand_id == brand_id,
+                SessionModel.server_type == server_type,
+                SessionModel.joined_at >= start,
+                SessionModel.joined_at <= end,
+            )
+        )
+        total_sessions = (await db.execute(total_q)).scalar() or 0
+
+        dau_q = (
+            select(
+                func.date(SessionModel.joined_at).label("day"),
+                func.count(distinct(SessionModel.user_id_hash)).label("unique_users"),
+            )
+            .where(and_(
+                SessionModel.brand_id == brand_id,
+                SessionModel.server_type == server_type,
+                SessionModel.joined_at >= start,
+                SessionModel.joined_at <= end,
+            ))
+            .group_by(func.date(SessionModel.joined_at))
+        )
+        dau_rows = (await db.execute(dau_q)).all()
+        avg_dau = (sum(r.unique_users for r in dau_rows) / len(dau_rows)) if dau_rows else 0.0
+
+        mau_q = select(func.count(distinct(SessionModel.user_id_hash))).where(
+            and_(
+                SessionModel.brand_id == brand_id,
+                SessionModel.server_type == server_type,
+                SessionModel.joined_at >= mau_start,
+                SessionModel.joined_at <= mau_end,
+            )
+        )
+        mau = (await db.execute(mau_q)).scalar() or 0
+
+        time_q = select(
+            func.avg(SessionModel.duration_seconds).label("avg_dur"),
+            func.sum(SessionModel.duration_seconds).label("total_sec"),
+        ).where(and_(
+            SessionModel.brand_id == brand_id,
+            SessionModel.server_type == server_type,
+            SessionModel.joined_at >= start,
+            SessionModel.joined_at <= end,
+            SessionModel.left_at.is_not(None),
+            SessionModel.duration_seconds.is_not(None),
+        ))
+        time_row = (await db.execute(time_q)).one()
+        avg_session_minutes = (time_row.avg_dur or 0) / 60
+        total_hours = (time_row.total_sec or 0) / 3600
+
+        time_series = await _build_time_series(db, brand_id, server_type, start, end)
+
+        results[server_type] = ServerTypeMetrics(
+            sessions=total_sessions,
+            dau=round(avg_dau, 2),
+            mau=mau,
+            avg_session_minutes=round(avg_session_minutes, 2),
+            total_hours=round(total_hours, 2),
+            time_series=time_series,
+        )
+
+    return results
+
+
+async def get_daily_metrics_by_custom_range(
+    db: AsyncSession,
+    brand_id,
+    start: datetime,
+    end: datetime,
+) -> list:
+    """
+    Como get_daily_metrics pero con start/end explicitos.
+    """
+    from app.schemas.metrics import DailyRow
+    from sqlalchemy import case
+
+    q = (
+        select(
+            func.date(SessionModel.joined_at).label("day"),
+            func.count().label("sessions"),
+            func.count(distinct(SessionModel.user_id_hash)).label("unique_users"),
+            func.avg(
+                case(
+                    (SessionModel.left_at.is_not(None), SessionModel.duration_seconds),
+                    else_=None,
+                )
+            ).label("avg_duration"),
+            func.sum(
+                case(
+                    (SessionModel.left_at.is_not(None), SessionModel.duration_seconds),
+                    else_=0,
+                )
+            ).label("total_seconds"),
+            func.sum(
+                case((SessionModel.server_type == "public", 1), else_=0)
+            ).label("public_sessions"),
+            func.sum(
+                case((SessionModel.server_type == "private", 1), else_=0)
+            ).label("private_sessions"),
+        )
+        .where(and_(
+            SessionModel.brand_id == brand_id,
+            SessionModel.joined_at >= start,
+            SessionModel.joined_at <= end,
+        ))
+        .group_by(func.date(SessionModel.joined_at))
+        .order_by(func.date(SessionModel.joined_at).desc())
+    )
+    rows = (await db.execute(q)).all()
+    daily_rows = {
+        _as_date(row.day): DailyRow(
+            date=_as_date(row.day),
+            sessions=row.sessions,
+            unique_users=row.unique_users,
+            avg_minutes=round((row.avg_duration or 0) / 60, 2),
+            total_hours=round((row.total_seconds or 0) / 3600, 2),
+            public_sessions=row.public_sessions,
+            private_sessions=row.private_sessions,
+        )
+        for row in rows
+    }
+    all_days = []
+    current = end.date()
+    while current >= start.date():
+        all_days.append(daily_rows.get(current, DailyRow(
+            date=current, sessions=0, unique_users=0,
+            avg_minutes=0.0, total_hours=0.0,
+            public_sessions=0, private_sessions=0,
+        )))
+        current -= timedelta(days=1)
     return all_days

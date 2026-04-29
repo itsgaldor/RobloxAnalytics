@@ -3,11 +3,6 @@
  * Todas las funciones son async y manejan errores con mensajes en español.
  */
 
-/**
- * Obtiene la configuración pública de una marca.
- * @param {string} slug - Slug de la marca (ej: 'yape', 'demo')
- * @returns {Promise<{slug, name, logo_url, banner_url, primary_color}>}
- */
 async function fetchBrandConfig(slug) {
   try {
     const res = await fetch(`${PCA_CONFIG.apiBase}/${slug}/config`);
@@ -26,20 +21,25 @@ async function fetchBrandConfig(slug) {
 }
 
 /**
- * Obtiene las métricas del dashboard para una marca y rango.
+ * Obtiene métricas del dashboard.
  * @param {string} slug
- * @param {'day'|'week'|'month'} range
- * @returns {Promise<{data: {public: Object, private: Object}}>}
+ * @param {string} range - 'day' | 'week' | 'month' | 'custom'
+ * @param {string|null} dateFrom - YYYY-MM-DD (solo cuando range='custom')
+ * @param {string|null} dateTo   - YYYY-MM-DD (solo cuando range='custom')
  */
-async function fetchMetrics(slug, range) {
+async function fetchMetrics(slug, range, dateFrom, dateTo) {
   try {
-    const res = await fetch(`${PCA_CONFIG.apiBase}/${slug}/metrics?range=${range}&compare=true`);
+    let url = `${PCA_CONFIG.apiBase}/${slug}/metrics?compare=true`;
+    if (range === 'custom' && dateFrom && dateTo) {
+      url += `&date_from=${dateFrom}&date_to=${dateTo}`;
+    } else {
+      url += `&range=${range || 'week'}`;
+    }
+    const res = await fetch(url);
     if (!res.ok) throw new Error(`Error al obtener métricas: ${res.status}`);
     return await res.json();
   } catch (err) {
-    if (err instanceof TypeError) {
-      throw new Error('Error de red al obtener métricas.');
-    }
+    if (err instanceof TypeError) throw new Error('Error de red al obtener métricas.');
     throw err;
   }
 }
@@ -47,48 +47,49 @@ async function fetchMetrics(slug, range) {
 /**
  * Obtiene las métricas diarias para una marca y rango.
  * @param {string} slug
- * @param {'week'|'month'} range
- * @returns {Promise<{data: Array}>}
+ * @param {string} range
+ * @param {string|null} dateFrom
+ * @param {string|null} dateTo
  */
-async function fetchDailyMetrics(slug, range) {
-  // El endpoint /metrics/daily solo acepta week o month — day no es válido
-  const dailyRange = range === 'day' ? 'week' : range;
+async function fetchDailyMetrics(slug, range, dateFrom, dateTo) {
   try {
-    const res = await fetch(`${PCA_CONFIG.apiBase}/${slug}/metrics/daily?range=${dailyRange}`);
+    let url;
+    if (range === 'custom' && dateFrom && dateTo) {
+      url = `${PCA_CONFIG.apiBase}/${slug}/metrics/daily?date_from=${dateFrom}&date_to=${dateTo}`;
+    } else {
+      const dailyRange = range === 'day' ? 'week' : (range || 'week');
+      url = `${PCA_CONFIG.apiBase}/${slug}/metrics/daily?range=${dailyRange}`;
+    }
+    const res = await fetch(url);
     if (!res.ok) throw new Error(`Error al obtener métricas diarias: ${res.status}`);
     return await res.json();
   } catch (err) {
-    if (err instanceof TypeError) {
-      throw new Error('Error de red al obtener métricas diarias.');
-    }
+    if (err instanceof TypeError) throw new Error('Error de red al obtener métricas diarias.');
     throw err;
   }
 }
 
-/**
- * Dispara el refresh de caché del dashboard.
- * @param {string} slug
- * @returns {Promise<{data: {refreshed_at: string}}>}
- */
 async function triggerRefresh(slug) {
   try {
     const res = await fetch(`${PCA_CONFIG.apiBase}/${slug}/refresh`, { method: 'POST' });
     if (!res.ok) throw new Error(`Error al refrescar: ${res.status}`);
     return await res.json();
   } catch (err) {
-    if (err instanceof TypeError) {
-      throw new Error('Error de red al refrescar los datos.');
-    }
+    if (err instanceof TypeError) throw new Error('Error de red al refrescar los datos.');
     throw err;
   }
 }
 
 /**
- * Construye la URL de exportación CSV (sin hacer fetch).
+ * Construye la URL de exportación CSV.
  * @param {string} slug
- * @param {'day'|'week'|'month'} range
- * @returns {string} URL lista para usar en window.location.href
+ * @param {string} range
+ * @param {string|null} dateFrom
+ * @param {string|null} dateTo
  */
-function getExportUrl(slug, range) {
-  return `${PCA_CONFIG.apiBase}/${slug}/export.csv?range=${range}`;
+function getExportUrl(slug, range, dateFrom, dateTo) {
+  if (range === 'custom' && dateFrom && dateTo) {
+    return `${PCA_CONFIG.apiBase}/${slug}/export.csv?date_from=${dateFrom}&date_to=${dateTo}`;
+  }
+  return `${PCA_CONFIG.apiBase}/${slug}/export.csv?range=${range || 'week'}`;
 }

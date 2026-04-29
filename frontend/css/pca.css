@@ -258,3 +258,60 @@
 
   #last-updated { display: none !important; }
 }
+
+/* ── KPI cards — animación de entrada escalonada ── */
+@keyframes kpi-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+#section-kpis > .kpi-card {
+  animation: kpi-fade-in 0.4s ease-out both;
+}
+#section-kpis > .kpi-card:nth-child(1) { animation-delay: 0.05s; }
+#section-kpis > .kpi-card:nth-child(2) { animation-delay: 0.10s; }
+#section-kpis > .kpi-card:nth-child(3) { animation-delay: 0.15s; }
+#section-kpis > .kpi-card:nth-child(4) { animation-delay: 0.20s; }
+#section-kpis > .kpi-card:nth-child(5) { animation-delay: 0.25s; }
+
+/* ── Tablet — KPIs en 3 columnas ── */
+@media (max-width: 991px) {
+  #section-kpis { flex-wrap: wrap !important; }
+  #section-kpis > div { flex: 1 1 30% !important; min-width: 30%; }
+}
+
+/* ── Mobile — KPIs en 2 columnas + sidebar overlay ── */
+@media (max-width: 768px) {
+  #section-kpis > div {
+    flex: 1 1 45% !important;
+    min-width: 45%;
+    border-right: none !important;
+    border-bottom: 1px solid rgba(148,163,184,0.12);
+  }
+
+  #section-charts .col-sm-6 { width: 100% !important; margin-bottom: 16px; }
+
+  /* Tabla: ocultar columnas 5, 6, 7 (Horas, Público, Privado) */
+  #table-daily th:nth-child(n+5),
+  #table-daily td:nth-child(n+5) { display: none; }
+
+  /* Filtros de rango compactos */
+  #range-filters .btn { padding: 4px 8px !important; font-size: 11px !important; }
+
+  /* Sidebar como overlay en mobile */
+  .navside {
+    position: fixed !important;
+    z-index: 1050 !important;
+    height: 100vh !important;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+  }
+  .app.aside-open .navside { transform: translateX(0) !important; }
+  #content { margin-left: 0 !important; }
+}
+
+/* ── Teléfonos pequeños — KPIs en 1 columna ── */
+@media (max-width: 480px) {
+  #section-kpis > div { flex: 1 1 100% !important; }
+  .app-header .navbar-brand { max-width: 120px; overflow: hidden; }
+  #last-updated, #script-status { display: none !important; }
+}

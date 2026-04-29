@@ -28,3 +28,6 @@ test_reporte.pdf
 
 # ZIP de la plantilla — no necesario en el repo
 *.zip
+
+# Credenciales locales (nunca commitear)
+.github_creds

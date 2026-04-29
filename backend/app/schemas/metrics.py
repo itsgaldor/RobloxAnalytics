@@ -32,6 +32,7 @@ class PreviousMetrics(BaseModel):
     mau: int
     avg_session_minutes: float
     total_hours: float
+    time_series: list[TimeSeriesPoint] = Field(default_factory=list)
 
 
 class MetricsData(BaseModel):

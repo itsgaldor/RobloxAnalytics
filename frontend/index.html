@@ -12,6 +12,7 @@
   <!-- Meta tags -->
   <meta name="description" content="Analytics de experiencias Roblox">
   <meta name="theme-color" content="#2d3e50">
+  <meta name="robots" content="noindex, nofollow">
 
   <link rel="shortcut icon" href="/dashboard/images/logo.png">
 
@@ -103,11 +104,42 @@
           </li>
 
           <!-- Filtros de rango temporal -->
-          <li class="nav-item">
-            <div class="btn-group m-x-sm" role="group">
-              <button id="btn-range-day"   class="btn btn-sm white b-a" data-range="day">Hoy</button>
-              <button id="btn-range-week"  class="btn btn-sm white b-a btn-theme-active" data-range="week">Semana</button>
-              <button id="btn-range-month" class="btn btn-sm white b-a" data-range="month">Mes</button>
+          <li class="nav-item" style="position:relative;">
+            <div id="range-controls" style="display:flex;align-items:center;gap:4px;padding:0 4px;">
+              <!-- Botones rápidos -->
+              <div class="btn-group btn-group-sm" id="range-quick" role="group">
+                <button class="btn white b-a" data-range="day"   id="btn-range-day">Hoy</button>
+                <button class="btn white b-a btn-theme-active" data-range="week"  id="btn-range-week">Semana</button>
+                <button class="btn white b-a" data-range="month" id="btn-range-month">Mes</button>
+              </div>
+              <!-- Botón personalizado -->
+              <button class="btn white b-a btn-sm" id="btn-range-custom" title="Rango personalizado" style="display:flex;align-items:center;gap:4px;">
+                <i class="ion-ios-calendar"></i>
+                <span id="custom-range-label" class="hidden-xs" style="font-size:11px;">Personalizado</span>
+              </button>
+            </div>
+            <!-- Date picker flotante -->
+            <div id="custom-date-picker" style="
+              display:none;position:absolute;top:calc(100% + 4px);right:0;
+              z-index:1050;background:var(--body-bg,#fff);
+              border:1px solid #e2e8f0;border-radius:8px;padding:16px;
+              box-shadow:0 8px 32px rgba(0,0,0,0.18);min-width:280px;
+            ">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                <div>
+                  <label style="font-size:11px;color:#64748b;display:block;margin-bottom:4px;">Desde</label>
+                  <input type="date" id="date-from" style="width:100%;padding:6px 10px;border:1px solid #e2e8f0;border-radius:4px;font-size:13px;">
+                </div>
+                <div>
+                  <label style="font-size:11px;color:#64748b;display:block;margin-bottom:4px;">Hasta</label>
+                  <input type="date" id="date-to" style="width:100%;padding:6px 10px;border:1px solid #e2e8f0;border-radius:4px;font-size:13px;">
+                </div>
+              </div>
+              <div id="date-picker-error" style="display:none;font-size:11px;color:#ef4444;margin-bottom:8px;"></div>
+              <div style="display:flex;justify-content:flex-end;gap:8px;">
+                <button id="btn-date-cancel" class="btn white b-a btn-sm">Cancelar</button>
+                <button id="btn-date-apply" class="btn btn-sm" style="background:var(--brand-primary,#2d3e50);color:#fff;border:none;">Aplicar</button>
+              </div>
             </div>
           </li>
 

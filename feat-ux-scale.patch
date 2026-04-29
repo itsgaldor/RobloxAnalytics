@@ -1,0 +1,2477 @@
+From 92cb99da74f6c4cc3e8358e3217f926d45a61d9b Mon Sep 17 00:00:00 2001
+From: Santiago <ramos.santiagom99@gmail.com>
+Date: Wed, 29 Apr 2026 17:13:00 +0000
+Subject: [PATCH] feat: UX polish + scale features (date picker, eventos,
+ comparison chart)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- Backend: custom date range (date_from/date_to) in metrics, daily, export endpoints
+- Backend: GET /admin/brands/{slug}/events endpoint (no user_id_hash)
+- Frontend: date picker UI with quick ranges + custom date range in dashboard
+- Frontend: period comparison chart (dashed line) with dynamic label
+- Frontend: KPI counter animations (easeOutCubic) + fade-in card entrance
+- Frontend: improved empty states with icon/title/subtitle
+- Frontend: responsive mobile breakpoints (991/768/480px)
+- Frontend: Chart.js v2 tooltip fix (mode nearest, dark styling)
+- Frontend: admin eventos.html — real-time event log with auto-refresh (10s)
+- Frontend: Eventos nav link added to all admin sidebar pages
+---
+ backend/app/api/v1/endpoints/admin.py   |  86 +++-
+ backend/app/api/v1/endpoints/metrics.py | 122 +++++-
+ backend/app/schemas/metrics.py          |   4 +-
+ backend/app/services/export.py          |  35 ++
+ backend/app/services/metrics.py         | 216 +++++++++-
+ frontend/admin/eventos.html             | 256 +++++++++++
+ frontend/admin/index.html               |   1 +
+ frontend/admin/js/pages/eventos.js      | 326 ++++++++++++++
+ frontend/admin/marca-detalle.html       |   1 +
+ frontend/admin/marcas.html              |   1 +
+ frontend/admin/reportes.html            |   1 +
+ frontend/admin/script-generator.html    |   1 +
+ frontend/css/pca.css                    |  57 +++
+ frontend/index.html                     | 108 ++---
+ frontend/js/api.js                      |  71 ++--
+ frontend/js/pages/dashboard.js          | 538 +++++++++++++-----------
+ 16 files changed, 1423 insertions(+), 401 deletions(-)
+ create mode 100755 frontend/admin/eventos.html
+ create mode 100755 frontend/admin/js/pages/eventos.js
+
+diff --git a/backend/app/api/v1/endpoints/admin.py b/backend/app/api/v1/endpoints/admin.py
+index 7d601c6..467f4c9 100644
+--- a/backend/app/api/v1/endpoints/admin.py
++++ b/backend/app/api/v1/endpoints/admin.py
+@@ -17,13 +17,13 @@ import uuid
+ from datetime import datetime, timedelta, timezone
+ from typing import Optional
+ 
+-from fastapi import Request, APIRouter, Depends, HTTPException
++from fastapi import Request, APIRouter, Depends, HTTPException, Query
+ from pydantic import BaseModel, Field, field_validator
+ from sqlalchemy import select
+ from sqlalchemy.ext.asyncio import AsyncSession
+ 
+ from app.dependencies import get_db, require_admin_auth
+-from app.models.models import Brand
++from app.models.models import Brand, Session as SessionModel
+ from app.services.metrics import get_combined_aggregate, _get_date_range
+ 
+ router = APIRouter(dependencies=[Depends(require_admin_auth)])
+@@ -472,3 +472,85 @@ async def get_script(
+         "meta": {},
+         "error": None,
+     }
++
++
++# ──────────────────────────────────────────────────────────────────────────────
++# LOGS DE EVENTOS
++# ──────────────────────────────────────────────────────────────────────────────
++
++@router.get(
++    "/brands/{brand_slug}/events",
++    summary="Logs de eventos de una marca",
++    description=(
++        "Devuelve los últimos eventos recibidos para una marca. "
++        "NO incluye user_id_hash — solo datos de sesión. "
++        "Ordenados por joined_at DESC."
++    ),
++)
++async def get_brand_events(
++    brand_slug: str,
++    limit: int = Query(50, ge=1, le=200, description="Máx 200 eventos"),
++    event_type: Optional[str] = Query(None, description="Filtrar: join | leave | heartbeat"),
++    db: AsyncSession = Depends(get_db),
++):
++    from sqlalchemy import select, and_
++
++    result = await db.execute(select(Brand).where(Brand.slug == brand_slug))
++    brand = result.scalar_one_or_none()
++    if brand is None:
++        raise HTTPException(
++            status_code=404,
++            detail={"data": None, "meta": {}, "error": f"Marca '{brand_slug}' no encontrada."},
++        )
++
++    q = (
++        select(SessionModel)
++        .where(SessionModel.brand_id == brand.id)
++        .order_by(SessionModel.joined_at.desc())
++        .limit(limit)
++    )
++    if event_type and event_type in ("join", "leave", "heartbeat"):
++        # Inferimos el tipo desde el estado de la sesión:
++        # join  → cualquier sesión (todas empiezan con join)
++        # leave → sesión cerrada (left_at IS NOT NULL)
++        # heartbeat → sesión activa con heartbeat reciente
++        if event_type == "leave":
++            q = q.where(SessionModel.left_at.is_not(None))
++        elif event_type == "heartbeat":
++            from datetime import timedelta
++            cutoff = datetime.now(timezone.utc) - timedelta(minutes=2)
++            q = q.where(
++                SessionModel.left_at.is_(None),
++                SessionModel.last_heartbeat >= cutoff,
++            )
++
++    sessions = (await db.execute(q)).scalars().all()
++
++    events = []
++    for s in sessions:
++        is_active = s.left_at is None
++        # Inferir event_type desde el estado
++        if not is_active:
++            ev_type = "leave"
++        elif (datetime.now(timezone.utc) - s.last_heartbeat).total_seconds() < 120:
++            ev_type = "heartbeat"
++        else:
++            ev_type = "join"
++
++        events.append({
++            "id": str(s.id),
++            "session_id": s.session_id,
++            "event_type": ev_type,
++            "server_type": s.server_type,
++            "joined_at": s.joined_at.isoformat() if s.joined_at else None,
++            "last_heartbeat": s.last_heartbeat.isoformat() if s.last_heartbeat else None,
++            "left_at": s.left_at.isoformat() if s.left_at else None,
++            "duration_seconds": s.duration_seconds,
++            "is_active": is_active,
++        })
++
++    return {
++        "data": events,
++        "meta": {"total": len(events), "brand": brand_slug, "limit": limit},
++        "error": None,
++    }
+diff --git a/backend/app/api/v1/endpoints/metrics.py b/backend/app/api/v1/endpoints/metrics.py
+index c099a70..a444baa 100644
+--- a/backend/app/api/v1/endpoints/metrics.py
++++ b/backend/app/api/v1/endpoints/metrics.py
+@@ -1,13 +1,14 @@
+ """
+ Endpoints de métricas del dashboard:
+-- GET /api/v1/{brand_slug}/metrics?range=day|week|month[&compare=true]
+-- GET /api/v1/{brand_slug}/metrics/daily?range=week|month
+-- GET /api/v1/{brand_slug}/export.csv?range=day|week|month
++- GET /api/v1/{brand_slug}/metrics?range=day|week|month[&date_from=YYYY-MM-DD&date_to=YYYY-MM-DD][&compare=true]
++- GET /api/v1/{brand_slug}/metrics/daily?range=week|month[&date_from=YYYY-MM-DD&date_to=YYYY-MM-DD]
++- GET /api/v1/{brand_slug}/export.csv?range=day|week|month[&date_from=YYYY-MM-DD&date_to=YYYY-MM-DD]
+ - POST /api/v1/{brand_slug}/refresh
+ """
+-from datetime import datetime, timezone
++from datetime import date, datetime, timedelta, timezone
++from typing import Optional
+ 
+-from fastapi import APIRouter, Depends, Query
++from fastapi import APIRouter, Depends, HTTPException, Query
+ from fastapi.responses import StreamingResponse
+ from sqlalchemy.ext.asyncio import AsyncSession
+ 
+@@ -15,47 +16,103 @@ from app.dependencies import get_brand, get_db
+ from app.models.models import Brand
+ from app.schemas.metrics import (
+     DailyMetricsResponse,
+-    DailyRangeType,
+     MetricsData,
+     MetricsResponse,
+     PreviousMetrics,
+-    RangeType,
+ )
+-from app.services.export import generate_csv
++from app.services.export import generate_csv, generate_csv_by_range
+ from app.services.metrics import (
++    _build_combined_time_series,
++    _get_date_range,
+     _get_previous_range,
+     get_combined_aggregate,
+     get_daily_metrics,
++    get_daily_metrics_by_custom_range,
++    get_metrics_by_custom_range,
+     get_metrics_by_server_type,
+ )
+ 
+ router = APIRouter()
+ 
+ 
++def _resolve_range(
++    range_type: Optional[str],
++    date_from: Optional[str],
++    date_to: Optional[str],
++) -> tuple[datetime, datetime]:
++    """
++    Resuelve el rango de fechas desde date_from/date_to o desde range_type.
++    date_from y date_to tienen prioridad si ambos están presentes.
++    """
++    if date_from and date_to:
++        try:
++            start_date = date.fromisoformat(date_from)
++            end_date = date.fromisoformat(date_to)
++        except ValueError:
++            raise HTTPException(400, detail="Formato de fecha inválido. Usa YYYY-MM-DD.")
++        if start_date > end_date:
++            raise HTTPException(400, detail="date_from debe ser anterior a date_to.")
++        if (end_date - start_date).days > 90:
++            raise HTTPException(400, detail="Rango máximo: 90 días.")
++        start = datetime(start_date.year, start_date.month, start_date.day,
++                         0, 0, 0, tzinfo=timezone.utc)
++        end = datetime(end_date.year, end_date.month, end_date.day,
++                       23, 59, 59, 999999, tzinfo=timezone.utc)
++        return start, end
++
++    rt = range_type or "week"
++    if rt not in ("day", "week", "month"):
++        raise HTTPException(400, detail="range debe ser day, week o month.")
++    return _get_date_range(rt)
++
++
++def _compute_previous_range(start: datetime, end: datetime) -> tuple[datetime, datetime]:
++    """Calcula el período anterior del mismo número de días."""
++    days = (end.date() - start.date()).days + 1
++    prev_end = start - timedelta(days=1)
++    prev_start = prev_end - timedelta(days=days - 1)
++    prev_end_full = prev_end.replace(hour=23, minute=59, second=59, microsecond=999999)
++    prev_start_full = prev_start.replace(hour=0, minute=0, second=0, microsecond=0)
++    return prev_start_full, prev_end_full
++
++
+ @router.get(
+     "/{brand_slug}/metrics",
+     response_model=MetricsResponse,
+     summary="Métricas del dashboard",
+     description=(
+         "Devuelve DAU, MAU, sesiones, tiempos y series temporales separadas por server_type. "
+-        "Con compare=true incluye las métricas del período anterior para calcular variación %."
++        "Acepta range=day|week|month o date_from/date_to (YYYY-MM-DD, máx 90 días). "
++        "Con compare=true incluye las métricas del período anterior."
+     ),
+ )
+ async def get_metrics(
+-    range: RangeType = Query("week", description="Rango temporal: day, week o month"),
++    range: Optional[str] = Query("week", description="Rango temporal: day, week o month"),
++    date_from: Optional[str] = Query(None, description="Fecha inicio YYYY-MM-DD (custom range)"),
++    date_to: Optional[str] = Query(None, description="Fecha fin YYYY-MM-DD (custom range)"),
+     compare: bool = Query(False, description="Si true, incluye métricas del período anterior"),
+     brand: Brand = Depends(get_brand),
+     db: AsyncSession = Depends(get_db),
+ ) -> MetricsResponse:
+-    # Métricas del período actual separadas por server_type
+-    metrics = await get_metrics_by_server_type(db, brand.id, range)
++    start, end = _resolve_range(range, date_from, date_to)
++    is_custom = bool(date_from and date_to)
++
++    # Métricas del período actual
++    if is_custom:
++        metrics = await get_metrics_by_custom_range(db, brand.id, start, end)
++    else:
++        metrics = await get_metrics_by_server_type(db, brand.id, range or "week")
+ 
+-    # Métricas del período anterior (solo si se solicita)
++    # Período anterior
+     previous = None
+     if compare:
+-        prev_start, prev_end = _get_previous_range(range)
++        if is_custom:
++            prev_start, prev_end = _compute_previous_range(start, end)
++        else:
++            prev_start, prev_end = _get_previous_range(range or "week")
+         prev_data = await get_combined_aggregate(db, brand.id, prev_start, prev_end)
+-        previous = PreviousMetrics(**prev_data)
++        prev_ts = await _build_combined_time_series(db, brand.id, prev_start, prev_end)
++        previous = PreviousMetrics(**prev_data, time_series=prev_ts)
+ 
+     return MetricsResponse(
+         data=MetricsData(
+@@ -63,7 +120,13 @@ async def get_metrics(
+             private=metrics["private"],
+             previous=previous,
+         ),
+-        meta={"brand": brand.slug, "range": range, "compare": compare},
++        meta={
++            "brand": brand.slug,
++            "range": range,
++            "date_from": date_from,
++            "date_to": date_to,
++            "compare": compare,
++        },
+         error=None,
+     )
+ 
+@@ -72,14 +135,21 @@ async def get_metrics(
+     "/{brand_slug}/metrics/daily",
+     response_model=DailyMetricsResponse,
+     summary="Métricas diarias detalladas",
+-    description="Array de métricas por día con sesiones públicas y privadas.",
++    description="Array de métricas por día. Acepta range=week|month o date_from/date_to.",
+ )
+ async def get_daily(
+-    range: DailyRangeType = Query("week", description="Rango temporal: week o month"),
++    range: Optional[str] = Query("week", description="Rango temporal: week o month"),
++    date_from: Optional[str] = Query(None, description="Fecha inicio YYYY-MM-DD"),
++    date_to: Optional[str] = Query(None, description="Fecha fin YYYY-MM-DD"),
+     brand: Brand = Depends(get_brand),
+     db: AsyncSession = Depends(get_db),
+ ) -> DailyMetricsResponse:
+-    rows = await get_daily_metrics(db, brand.id, range)
++    if date_from and date_to:
++        start, end = _resolve_range(range, date_from, date_to)
++        rows = await get_daily_metrics_by_custom_range(db, brand.id, start, end)
++    else:
++        rt = range if range in ("week", "month") else "week"
++        rows = await get_daily_metrics(db, brand.id, rt)
+     return DailyMetricsResponse(
+         data=rows,
+         meta={"brand": brand.slug, "range": range, "total_days": len(rows)},
+@@ -90,14 +160,22 @@ async def get_daily(
+ @router.get(
+     "/{brand_slug}/export.csv",
+     summary="Exportar métricas en CSV",
+-    description="Descarga un CSV con las métricas diarias del rango solicitado.",
++    description="Descarga un CSV con las métricas diarias. Acepta range o date_from/date_to.",
+ )
+ async def export_csv(
+-    range: RangeType = Query("week", description="Rango temporal: day, week o month"),
++    range: Optional[str] = Query("week", description="Rango temporal: day, week o month"),
++    date_from: Optional[str] = Query(None, description="Fecha inicio YYYY-MM-DD"),
++    date_to: Optional[str] = Query(None, description="Fecha fin YYYY-MM-DD"),
+     brand: Brand = Depends(get_brand),
+     db: AsyncSession = Depends(get_db),
+ ):
+-    content, filename = await generate_csv(db, brand.id, brand.slug, range)
++    if date_from and date_to:
++        start, end = _resolve_range(range, date_from, date_to)
++        content, filename = await generate_csv_by_range(
++            db, brand.id, brand.slug, start, end, date_from, date_to
++        )
++    else:
++        content, filename = await generate_csv(db, brand.id, brand.slug, range or "week")
+     return StreamingResponse(
+         iter([content]),
+         media_type="text/csv",
+diff --git a/backend/app/schemas/metrics.py b/backend/app/schemas/metrics.py
+index 27afc4e..a682b8e 100644
+--- a/backend/app/schemas/metrics.py
++++ b/backend/app/schemas/metrics.py
+@@ -32,6 +32,7 @@ class PreviousMetrics(BaseModel):
+     mau: int
+     avg_session_minutes: float
+     total_hours: float
++    time_series: list[TimeSeriesPoint] = Field(default_factory=list)
+ 
+ 
+ class MetricsData(BaseModel):
+@@ -66,5 +67,4 @@ class DailyMetricsResponse(BaseModel):
+     error: str | None = None
+ 
+ 
+-RangeType = Literal["day", "week", "month"]
+-DailyRangeType = Literal["week", "month"]
++RangeType = Liter
+\ No newline at end of file
+diff --git a/backend/app/services/export.py b/backend/app/services/export.py
+index c874bc7..a9edbc9 100644
+--- a/backend/app/services/export.py
++++ b/backend/app/services/export.py
+@@ -53,3 +53,38 @@ async def generate_csv(
+     filename = f"{brand_slug}_{range_type}_{today_str}.csv"
+ 
+     return output.getvalue(), filename
++
++
++async def generate_csv_by_range(
++    db: AsyncSession,
++    brand_id,
++    brand_slug: str,
++    start,
++    end,
++    date_from: str,
++    date_to: str,
++) -> tuple[str, str]:
++    """Genera el CSV de metricas para un rango de fechas personalizado."""
++    from app.services.metrics import get_daily_metrics_by_custom_range
++    rows = await get_daily_metrics_by_custom_range(db, brand_id, start, end)
++
++    output = io.StringIO()
++    writer = csv.DictWriter(
++        output,
++        fieldnames=["date","sessions","unique_users","avg_minutes","total_hours",
++                    "public_sessions","private_sessions"],
++    )
++    writer.writeheader()
++    for row in rows:
++        writer.writerow({
++            "date": str(row.date),
++            "sessions": row.sessions,
++            "unique_users": row.unique_users,
++            "avg_minutes": row.avg_minutes,
++            "total_hours": row.total_hours,
++            "public_sessions": row.public_sessions,
++            "private_sessions": row.private_sessions,
++        })
++
++    filename = f"{brand_slug}_{date_from}_{date_to}.csv"
++    return output.getvalue(), filename
+diff --git a/backend/app/services/metrics.py b/backend/app/services/metrics.py
+index 583c168..40b172a 100644
+--- a/backend/app/services/metrics.py
++++ b/backend/app/services/metrics.py
+@@ -76,6 +76,51 @@ def _get_previous_range(range_type: str) -> tuple[datetime, datetime]:
+     return start, end
+ 
+ 
++async def _build_combined_time_series(
++    db: AsyncSession,
++    brand_id,
++    start: datetime,
++    end: datetime,
++) -> list:
++    """
++    Construye la serie temporal combinada (public + private) por dia.
++    Usada para mostrar el periodo anterior superpuesto en el grafico.
++    """
++    q = (
++        select(
++            func.date(SessionModel.joined_at).label("day"),
++            func.count().label("sessions"),
++            func.count(distinct(SessionModel.user_id_hash)).label("dau"),
++        )
++        .where(
++            and_(
++                SessionModel.brand_id == brand_id,
++                SessionModel.joined_at >= start,
++                SessionModel.joined_at <= end,
++            )
++        )
++        .group_by(func.date(SessionModel.joined_at))
++    )
++    rows = (await db.execute(q)).all()
++    by_day = {_as_date(r.day): (r.sessions, r.dau) for r in rows}
++
++    points = []
++    current = start.date()
++    end_date = end.date()
++    while current <= end_date:
++        sessions, dau = by_day.get(current, (0, 0))
++        points.append(
++            TimeSeriesPoint(
++                date=current,
++                sessions=sessions,
++                dau=dau,
++                avg_minutes=0.0,
++            )
++        )
++        current += timedelta(days=1)
++    return points
++
++
+ async def get_combined_aggregate(
+     db: AsyncSession,
+     brand_id,
+@@ -395,20 +440,163 @@ async def get_daily_metrics(
+     # Garantizar todos los dias del rango
+     all_days = []
+     current = end.date()
+-    stop = start.date()
+-    while current >= stop:
+-        if current in daily_rows:
+-            all_days.append(daily_rows[current])
+-        else:
+-            all_days.append(DailyRow(
+-                date=current,
+-                sessions=0,
+-                unique_users=0,
+-                avg_minutes=0.0,
+-                total_hours=0.0,
+-                public_sessions=0,
+-                private_sessions=0,
+-            ))
++    while current >= start.date():
++        all_days.append(daily_rows.get(current, DailyRow(
++            date=current,
++            sessions=0,
++            unique_users=0,
++            avg_minutes=0.0,
++            total_hours=0.0,
++            public_sessions=0,
++            private_sessions=0,
++        )))
+         current -= timedelta(days=1)
++    return all_days
++
+ 
++async def get_metrics_by_custom_range(
++    db: AsyncSession,
++    brand_id,
++    start: datetime,
++    end: datetime,
++) -> dict:
++    """
++    Como get_metrics_by_server_type pero con start/end explicitos.
++    Usado cuando el frontend envia un rango personalizado.
++    """
++    mau_start, mau_end = _get_mau_range()
++    results = {}
++
++    for server_type in ("public", "private"):
++        total_q = select(func.count()).where(
++            and_(
++                SessionModel.brand_id == brand_id,
++                SessionModel.server_type == server_type,
++                SessionModel.joined_at >= start,
++                SessionModel.joined_at <= end,
++            )
++        )
++        total_sessions = (await db.execute(total_q)).scalar() or 0
++
++        dau_q = (
++            select(
++                func.date(SessionModel.joined_at).label("day"),
++                func.count(distinct(SessionModel.user_id_hash)).label("unique_users"),
++            )
++            .where(and_(
++                SessionModel.brand_id == brand_id,
++                SessionModel.server_type == server_type,
++                SessionModel.joined_at >= start,
++                SessionModel.joined_at <= end,
++            ))
++            .group_by(func.date(SessionModel.joined_at))
++        )
++        dau_rows = (await db.execute(dau_q)).all()
++        avg_dau = (sum(r.unique_users for r in dau_rows) / len(dau_rows)) if dau_rows else 0.0
++
++        mau_q = select(func.count(distinct(SessionModel.user_id_hash))).where(
++            and_(
++                SessionModel.brand_id == brand_id,
++                SessionModel.server_type == server_type,
++                SessionModel.joined_at >= mau_start,
++                SessionModel.joined_at <= mau_end,
++            )
++        )
++        mau = (await db.execute(mau_q)).scalar() or 0
++
++        time_q = select(
++            func.avg(SessionModel.duration_seconds).label("avg_dur"),
++            func.sum(SessionModel.duration_seconds).label("total_sec"),
++        ).where(and_(
++            SessionModel.brand_id == brand_id,
++            SessionModel.server_type == server_type,
++            SessionModel.joined_at >= start,
++            SessionModel.joined_at <= end,
++            SessionModel.left_at.is_not(None),
++            SessionModel.duration_seconds.is_not(None),
++        ))
++        time_row = (await db.execute(time_q)).one()
++        avg_session_minutes = (time_row.avg_dur or 0) / 60
++        total_hours = (time_row.total_sec or 0) / 3600
++
++        time_series = await _build_time_series(db, brand_id, server_type, start, end)
++
++        results[server_type] = ServerTypeMetrics(
++            sessions=total_sessions,
++            dau=round(avg_dau, 2),
++            mau=mau,
++            avg_session_minutes=round(avg_session_minutes, 2),
++            total_hours=round(total_hours, 2),
++            time_series=time_series,
++        )
++
++    return results
++
++
++async def get_daily_metrics_by_custom_range(
++    db: AsyncSession,
++    brand_id,
++    start: datetime,
++    end: datetime,
++) -> list:
++    """
++    Como get_daily_metrics pero con start/end explicitos.
++    """
++    from app.schemas.metrics import DailyRow
++    from sqlalchemy import case
++
++    q = (
++        select(
++            func.date(SessionModel.joined_at).label("day"),
++            func.count().label("sessions"),
++            func.count(distinct(SessionModel.user_id_hash)).label("unique_users"),
++            func.avg(
++                case(
++                    (SessionModel.left_at.is_not(None), SessionModel.duration_seconds),
++                    else_=None,
++                )
++            ).label("avg_duration"),
++            func.sum(
++                case(
++                    (SessionModel.left_at.is_not(None), SessionModel.duration_seconds),
++                    else_=0,
++                )
++            ).label("total_seconds"),
++            func.sum(
++                case((SessionModel.server_type == "public", 1), else_=0)
++            ).label("public_sessions"),
++            func.sum(
++                case((SessionModel.server_type == "private", 1), else_=0)
++            ).label("private_sessions"),
++        )
++        .where(and_(
++            SessionModel.brand_id == brand_id,
++            SessionModel.joined_at >= start,
++            SessionModel.joined_at <= end,
++        ))
++        .group_by(func.date(SessionModel.joined_at))
++        .order_by(func.date(SessionModel.joined_at).desc())
++    )
++    rows = (await db.execute(q)).all()
++    daily_rows = {
++        _as_date(row.day): DailyRow(
++            date=_as_date(row.day),
++            sessions=row.sessions,
++            unique_users=row.unique_users,
++            avg_minutes=round((row.avg_duration or 0) / 60, 2),
++            total_hours=round((row.total_seconds or 0) / 3600, 2),
++            public_sessions=row.public_sessions,
++            private_sessions=row.private_sessions,
++        )
++        for row in rows
++    }
++    all_days = []
++    current = end.date()
++    while current >= start.date():
++        all_days.append(daily_rows.get(current, DailyRow(
++            date=current, sessions=0, unique_users=0,
++            avg_minutes=0.0, total_hours=0.0,
++            public_sessions=0, private_sessions=0,
++        )))
++        current -= timedelta(days=1)
+     return all_days
+diff --git a/frontend/admin/eventos.html b/frontend/admin/eventos.html
+new file mode 100755
+index 0000000..00343d2
+--- /dev/null
++++ b/frontend/admin/eventos.html
+@@ -0,0 +1,256 @@
++<!DOCTYPE html>
++<html lang="es">
++<head>
++  <meta charset="utf-8" />
++  <title>Eventos — PCA Admin</title>
++  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
++  <meta http-equiv="X-UA-Compatible" content="IE=edge">
++  <link rel="shortcut icon" href="/dashboard/images/logo.png">
++  <link rel="stylesheet" href="/dashboard/css/animate.css/animate.min.css" />
++  <link rel="stylesheet" href="/dashboard/css/glyphicons/glyphicons.css" />
++  <link rel="stylesheet" href="/dashboard/css/font-awesome/css/font-awesome.min.css" />
++  <link rel="stylesheet" href="/dashboard/css/ionicons/css/ionicons.min.css" />
++  <link rel="stylesheet" href="/dashboard/css/bootstrap/dist/css/bootstrap.min.css" />
++  <link rel="stylesheet" href="/dashboard/css/styles/app.css" />
++  <link rel="stylesheet" href="/dashboard/css/styles/style.css" />
++  <link rel="stylesheet" href="/dashboard/css/styles/font.css" />
++  <link rel="stylesheet" href="/dashboard/css/pca.css" />
++  <link rel="stylesheet" href="/admin/css/admin.css" />
++  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%232d3e50'/><text y='.9em' font-size='70' x='15'>📊</text></svg>">
++  <meta name="theme-color" content="#2d3e50">
++  <style>
++    .pca-stat-card {
++      text-align: center;
++      padding: 20px 12px;
++    }
++    .pca-stat-value {
++      font-size: 2rem;
++      font-weight: 700;
++      line-height: 1.1;
++      display: block;
++    }
++    .pca-stat-label {
++      font-size: 11px;
++      text-transform: uppercase;
++      letter-spacing: 0.06em;
++      opacity: 0.65;
++      display: block;
++      margin-top: 4px;
++    }
++    @keyframes pca-spin { to { transform: rotate(360deg); } }
++    .pca-spin { display: inline-block; animation: pca-spin 0.8s linear infinite; }
++    #table-events th { white-space: nowrap; font-size: 12px; }
++    #table-events td { vertical-align: middle; font-size: 13px; }
++    .btn-theme-active {
++      background-color: var(--brand-primary, #2d3e50) !important;
++      color: #fff !important;
++      border-color: var(--brand-primary, #2d3e50) !important;
++    }
++  </style>
++</head>
++<body>
++<div class="app" id="app">
++
++  <!-- SIDEBAR -->
++  <div id="aside" class="app-aside fade nav-dropdown black">
++    <div class="navside dk pca-admin-sidebar" data-layout="column">
++      <div class="navbar no-radius pca-admin-navbar">
++        <a href="/admin/" class="navbar-brand">
++          <i class="ion-ios-settings" style="font-size:1.4rem; margin-right:8px;"></i>
++          <span class="_600">PCA Admin</span>
++        </a>
++      </div>
++      <div data-flex class="hide-scroll">
++        <nav class="scroll nav-stacked nav-stacked-rounded nav-color">
++          <ul class="nav" data-ui-nav>
++            <li class="nav-header hidden-folded"><span class="text-xs">Administracion</span></li>
++            <li><a href="/admin/"><span class="nav-icon"><i class="ion-ios-speedometer"></i></span><span class="nav-text">Resumen global</span></a></li>
++            <li><a href="/admin/marcas.html"><span class="nav-icon"><i class="ion-ios-people"></i></span><span class="nav-text">Marcas</span></a></li>
++            <li><a href="/admin/script-generator.html"><span class="nav-icon"><i class="ion-code"></i></span><span class="nav-text">Generador Script</span></a></li>
++            <li><a href="/admin/reportes.html"><span class="nav-icon"><i class="ion-ios-paper"></i></span><span class="nav-text">Reportes</span></a></li>
++            <li class="active"><a href="/admin/eventos.html"><span class="nav-icon"><i class="ion-ios-pulse"></i></span><span class="nav-text">Eventos</span></a></li>
++            <li class="nav-item">
++              <form method="POST" action="/api/v1/auth/logout" style="display:inline;">
++                <button type="submit" class="btn btn-sm white b-a m-x-xs" title="Cerrar sesion">
++                  <i class="ion-log-out"></i>
++                  <span class="hidden-xs"> Salir</span>
++                </button>
++              </form>
++            </li>
++          </ul>
++        </nav>
++      </div>
++    </div>
++  </div>
++  <!-- / SIDEBAR -->
++
++  <!-- CONTENT -->
++  <div id="content" class="app-content" role="main">
++
++    <!-- HEADER -->
++    <div class="app-header white bg b-b">
++      <div class="navbar">
++        <a data-toggle="modal" data-target="#aside" class="navbar-item pull-left hidden-lg-up p-r m-a-0">
++          <i class="ion-navicon"></i>
++        </a>
++        <div class="navbar-item pull-left">
++          <a href="/admin/" class="text-muted">Admin</a>
++          <span class="text-muted m-x-xs">/</span>
++          <span class="_500">Eventos</span>
++          <span id="badge-active" class="label label-success m-l-xs" style="display:none;font-size:10px;vertical-align:middle;"></span>
++        </div>
++        <ul class="nav navbar-nav pull-right">
++
++          <!-- Última actualización -->
++          <li class="nav-item hidden-xs-down">
++            <span id="last-updated" class="nav-item text-muted" style="font-size:12px;"></span>
++          </li>
++
++          <!-- Filtros de tipo de evento -->
++          <li class="nav-item">
++            <div class="btn-group btn-group-sm" role="group" style="margin:0 4px;">
++              <button class="btn white b-a btn-theme-active" data-event-type="all">Todos</button>
++              <button class="btn white b-a" data-event-type="join">Join</button>
++              <button class="btn white b-a" data-event-type="heartbeat">Heartbeat</button>
++              <button class="btn white b-a" data-event-type="leave">Leave</button>
++            </div>
++          </li>
++
++          <!-- Toggle auto-refresh -->
++          <li class="nav-item">
++            <button id="btn-autorefresh" class="btn btn-sm white b-a m-x-xs btn-theme-active"
++                    title="Auto-refresh ON (cada 10s) — click para pausar">
++              <i class="ion-android-sync"></i>
++              <span class="hidden-xs" style="font-size:11px;"> Live</span>
++            </button>
++          </li>
++
++          <!-- Refresh manual -->
++          <li class="nav-item">
++            <button id="btn-refresh" class="btn btn-sm white b-a m-x-xs" title="Actualizar ahora">
++              <i class="ion-android-sync"></i>
++            </button>
++          </li>
++
++        </ul>
++      </div>
++    </div>
++    <!-- / HEADER -->
++
++    <!-- BODY -->
++    <div class="app-body">
++      <div class="padding">
++
++        <!-- Error -->
++        <div id="section-error" class="alert alert-danger m-b" style="display:none;">
++          <i class="ion-alert-circled"></i> <span id="error-message"></span>
++        </div>
++
++        <!-- Selector de marca -->
++        <div class="box m-b">
++          <div class="box-header b-b">
++            <h3>Logs de eventos en tiempo real</h3>
++            <small class="text-muted">Selecciona una marca para ver sus eventos de sesión</small>
++          </div>
++          <div class="box-body p-a">
++            <div class="form-group m-b-0">
++              <label class="_500 m-b-xs">Marca</label>
++              <select id="select-brand" class="form-control" style="max-width:320px;">
++                <option value="">— Seleccionar marca —</option>
++              </select>
++            </div>
++          </div>
++        </div>
++
++        <!-- Sección eventos (oculta hasta seleccionar marca) -->
++        <div id="section-events" style="display:none;">
++
++          <!-- Stats -->
++          <div class="row no-gutter b-b m-b">
++            <div class="col-xs-4">
++              <div class="box pca-stat-card">
++                <span id="stat-active" class="pca-stat-value text-success">—</span>
++                <span class="pca-stat-label">Sesiones activas</span>
++              </div>
++            </div>
++            <div class="col-xs-4">
++              <div class="box pca-stat-card" style="border-left:1px solid #e2e8f0;">
++                <span id="stat-hour" class="pca-stat-value">—</span>
++                <span class="pca-stat-label">Eventos última hora</span>
++              </div>
++            </div>
++            <div class="col-xs-4">
++              <div class="box pca-stat-card" style="border-left:1px solid #e2e8f0;">
++                <span id="stat-frequent" class="pca-stat-value text-info">—</span>
++                <span class="pca-stat-label">Tipo más frecuente</span>
++              </div>
++            </div>
++          </div>
++
++          <!-- Tabla de eventos -->
++          <div class="box">
++            <div class="box-header b-b">
++              <h3>Eventos recientes</h3>
++              <small class="text-muted">Últimos 200 eventos ordenados por inicio de sesión (más recientes primero)</small>
++            </div>
++            <div class="table-responsive">
++              <table id="table-events" class="table table-striped b-t m-b-0">
++                <thead>
++                  <tr>
++                    <th>Tipo</th>
++                    <th>Session ID</th>
++                    <th>Servidor</th>
++                    <th>Inicio</th>
++                    <th>Último heartbeat</th>
++                    <th>Duración</th>
++                    <th>Estado</th>
++                  </tr>
++                </thead>
++                <tbody>
++                  <tr>
++                    <td colspan="7" class="text-center text-muted p-a-lg">
++                      <i class="ion-ios-pulse" style="font-size:2rem;display:block;margin-bottom:8px;opacity:0.4;"></i>
++                      Selecciona una marca para ver los eventos
++                    </td>
++                  </tr>
++                </tbody>
++              </table>
++            </div>
++          </div>
++
++        </div>
++        <!-- / section-events -->
++
++      </div>
++    </div>
++    <!-- / BODY -->
++
++    <!-- FOOTER -->
++    <div class="app-footer white bg p-a b-t">
++      <div class="pull-right text-sm text-muted">Peru City Analytics v0.2.0</div>
++      <span class="text-sm text-muted">&copy; 2026 — Peru City Analytics</span>
++    </div>
++    <!-- / FOOTER -->
++
++  </div>
++  <!-- / CONTENT -->
++
++</div><!-- / #app -->
++
++<!-- Scripts plantilla Aside -->
++<script src="/dashboard/libs/jquery/dist/jquery.js"></script>
++<script src="/dashboard/libs/tether/dist/js/tether.min.js"></script>
++<script src="/dashboard/libs/bootstrap/dist/js/bootstrap.js"></script>
++<script src="/dashboard/libs/jQuery-Storage-API/jquery.storageapi.min.js"></script>
++<script src="/dashboard/libs/PACE/pace.min.js"></script>
++<script src="/dashboard/scripts/app.js"></script>
++<script src="/dashboard/scripts/ui-load.js"></script>
++<script src="/dashboard/scripts/ui-jp.js"></script>
++<script src="/dashboard/scripts/ajax.js"></script>
++<script src="/dashboard/scripts/ui-nav.js"></script>
++
++<!-- Config + página -->
++<script src="/dashboard/js/config.js"></script>
++<script src="/admin/js/pages/eventos.js"></script>
++</body>
++</html>
+diff --git a/frontend/admin/index.html b/frontend/admin/index.html
+index c30120d..c99ced4 100644
+--- a/frontend/admin/index.html
++++ b/frontend/admin/index.html
+@@ -48,6 +48,7 @@
+             <li>
+               <a href="/admin/reportes.html"><span class="nav-icon"><i class="ion-ios-paper"></i></span><span class="nav-text">Reportes</span></a>
+             </li>
++            <li><a href="/admin/eventos.html"><span class="nav-icon"><i class="ion-ios-pulse"></i></span><span class="nav-text">Eventos</span></a></li>
+             <li class="nav-item">
+             <form method="POST" action="/api/v1/auth/logout" style="display:inline;">
+               <button type="submit" class="btn btn-sm white b-a m-x-xs" title="Cerrar sesion">
+diff --git a/frontend/admin/js/pages/eventos.js b/frontend/admin/js/pages/eventos.js
+new file mode 100755
+index 0000000..1f9e6a5
+--- /dev/null
++++ b/frontend/admin/js/pages/eventos.js
+@@ -0,0 +1,326 @@
++/* ===================================================================
++   eventos.js — Logs de eventos en tiempo real por marca
++   Endpoint: GET /api/v1/admin/brands/{slug}/events?limit=200[&event_type=...]
++   =================================================================== */
++
++(function () {
++  'use strict';
++
++  /* ── Estado ─────────────────────────────────────────────────── */
++  var state = {
++    brands: [],
++    selectedBrand: null,
++    eventTypeFilter: 'all',
++    autoRefresh: true,
++    refreshInterval: null,
++    REFRESH_MS: 10000,
++    lastData: [],
++    loading: false,
++  };
++
++  /* ── DOM refs ────────────────────────────────────────────────── */
++  var $ = function (id) { return document.getElementById(id); };
++
++  /* ── Init ────────────────────────────────────────────────────── */
++  document.addEventListener('DOMContentLoaded', function () {
++    loadBrands();
++    bindControls();
++  });
++
++  /* ── Cargar marcas ───────────────────────────────────────────── */
++  function loadBrands() {
++    fetch('/api/v1/admin/brands?limit=100', { credentials: 'include' })
++      .then(function (r) { return r.json(); })
++      .then(function (resp) {
++        state.brands = (resp.data || []);
++        var sel = $('select-brand');
++        sel.innerHTML = '<option value="">— Seleccionar marca —</option>';
++        state.brands.forEach(function (b) {
++          var o = document.createElement('option');
++          o.value = b.slug;
++          o.textContent = b.name;
++          sel.appendChild(o);
++        });
++      })
++      .catch(function (e) {
++        showError('No se pudo cargar la lista de marcas: ' + e.message);
++      });
++  }
++
++  /* ── Controles ───────────────────────────────────────────────── */
++  function bindControls() {
++    /* Selector de marca */
++    $('select-brand').addEventListener('change', function () {
++      state.selectedBrand = this.value || null;
++      if (state.selectedBrand) {
++        showSection();
++        loadEvents();
++        startAutoRefresh();
++      } else {
++        hideSection();
++        stopAutoRefresh();
++      }
++    });
++
++    /* Filtros de tipo */
++    document.querySelectorAll('[data-event-type]').forEach(function (btn) {
++      btn.addEventListener('click', function () {
++        document.querySelectorAll('[data-event-type]').forEach(function (b) {
++          b.classList.remove('active', 'btn-theme-active');
++        });
++        this.classList.add('active', 'btn-theme-active');
++        state.eventTypeFilter = this.dataset.eventType;
++        loadEvents();
++      });
++    });
++
++    /* Toggle auto-refresh */
++    $('btn-autorefresh').addEventListener('click', function () {
++      state.autoRefresh = !state.autoRefresh;
++      updateAutoRefreshUI();
++      if (state.autoRefresh && state.selectedBrand) {
++        loadEvents();
++        startAutoRefresh();
++      } else {
++        stopAutoRefresh();
++      }
++    });
++
++    /* Refresh manual */
++    $('btn-refresh').addEventListener('click', function () {
++      if (state.selectedBrand) loadEvents();
++    });
++  }
++
++  /* ── Auto-refresh ────────────────────────────────────────────── */
++  function startAutoRefresh() {
++    stopAutoRefresh();
++    if (!state.autoRefresh) return;
++    state.refreshInterval = setInterval(function () {
++      if (state.selectedBrand && !state.loading) loadEvents();
++    }, state.REFRESH_MS);
++  }
++
++  function stopAutoRefresh() {
++    if (state.refreshInterval) {
++      clearInterval(state.refreshInterval);
++      state.refreshInterval = null;
++    }
++  }
++
++  function updateAutoRefreshUI() {
++    var btn = $('btn-autorefresh');
++    var icon = btn.querySelector('i');
++    if (state.autoRefresh) {
++      btn.classList.add('btn-theme-active');
++      btn.title = 'Auto-refresh ON (cada 10s) — click para pausar';
++      if (icon) { icon.className = 'ion-android-sync'; }
++    } else {
++      btn.classList.remove('btn-theme-active');
++      btn.title = 'Auto-refresh pausado — click para activar';
++      if (icon) { icon.className = 'ion-pause'; }
++    }
++  }
++
++  /* ── Cargar eventos ──────────────────────────────────────────── */
++  function loadEvents() {
++    if (!state.selectedBrand || state.loading) return;
++    state.loading = true;
++    setRefreshSpinner(true);
++
++    var url = '/api/v1/admin/brands/' + state.selectedBrand + '/events?limit=200';
++    if (state.eventTypeFilter && state.eventTypeFilter !== 'all') {
++      url += '&event_type=' + state.eventTypeFilter;
++    }
++
++    fetch(url, { credentials: 'include' })
++      .then(function (r) {
++        if (!r.ok) throw new Error('HTTP ' + r.status);
++        return r.json();
++      })
++      .then(function (resp) {
++        if (resp.error) throw new Error(resp.error);
++        state.lastData = resp.data || [];
++        renderStats(state.lastData);
++        renderTable(state.lastData);
++        updateTimestamp();
++        hideError();
++      })
++      .catch(function (e) {
++        showError('Error al cargar eventos: ' + e.message);
++      })
++      .finally(function () {
++        state.loading = false;
++        setRefreshSpinner(false);
++      });
++  }
++
++  /* ── Renderizar stats ────────────────────────────────────────── */
++  function renderStats(events) {
++    var now = Date.now();
++    var oneHourAgo = now - 3600000;
++
++    var activeSessions = 0;
++    var eventsLastHour = 0;
++    var typeCounts = { join: 0, heartbeat: 0, leave: 0 };
++
++    events.forEach(function (ev) {
++      if (ev.is_active) activeSessions++;
++
++      /* Contar eventos de la última hora usando joined_at o last_heartbeat */
++      var ts = ev.last_heartbeat || ev.joined_at;
++      if (ts) {
++        var t = new Date(ts).getTime();
++        if (t >= oneHourAgo) eventsLastHour++;
++      }
++
++      if (typeCounts.hasOwnProperty(ev.event_type)) {
++        typeCounts[ev.event_type]++;
++      }
++    });
++
++    /* Tipo más frecuente */
++    var mostFrequent = Object.keys(typeCounts).reduce(function (a, b) {
++      return typeCounts[a] >= typeCounts[b] ? a : b;
++    });
++
++    setText('stat-active', activeSessions);
++    setText('stat-hour', eventsLastHour);
++    setText('stat-frequent', capitalize(mostFrequent));
++
++    /* Badge en el título */
++    var badge = $('badge-active');
++    if (badge) {
++      badge.textContent = activeSessions;
++      badge.style.display = activeSessions > 0 ? '' : 'none';
++    }
++  }
++
++  /* ── Renderizar tabla ────────────────────────────────────────── */
++  function renderTable(events) {
++    var tbody = document.querySelector('#table-events tbody');
++    if (!tbody) return;
++
++    if (!events || events.length === 0) {
++      tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted p-a-lg">'
++        + '<i class="ion-ios-pulse" style="font-size:2rem;display:block;margin-bottom:8px;opacity:0.4;"></i>'
++        + 'No hay eventos para mostrar</td></tr>';
++      return;
++    }
++
++    tbody.innerHTML = events.map(function (ev) {
++      return '<tr>'
++        + '<td>' + eventTypeBadge(ev.event_type) + '</td>'
++        + '<td><code style="font-size:12px;">' + shortId(ev.session_id) + '</code></td>'
++        + '<td>' + serverBadge(ev.server_type) + '</td>'
++        + '<td class="text-sm">' + fmtDatetime(ev.joined_at) + '</td>'
++        + '<td class="text-sm">' + fmtDatetime(ev.last_heartbeat) + '</td>'
++        + '<td class="text-sm">' + fmtDuration(ev.duration_seconds) + '</td>'
++        + '<td>' + statusBadge(ev.is_active) + '</td>'
++        + '</tr>';
++    }).join('');
++  }
++
++  /* ── Helpers de formato ──────────────────────────────────────── */
++  function shortId(id) {
++    if (!id) return '—';
++    return String(id).slice(0, 8) + '…';
++  }
++
++  function fmtDatetime(iso) {
++    if (!iso) return '<span class="text-muted">—</span>';
++    var d = new Date(iso);
++    var pad = function (n) { return String(n).padStart(2, '0'); };
++    return pad(d.getDate()) + '/' + pad(d.getMonth() + 1)
++      + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
++  }
++
++  function fmtDuration(secs) {
++    if (secs === null || secs === undefined) return '<span class="text-muted">—</span>';
++    var s = Math.round(secs);
++    if (s < 60) return s + 's';
++    var m = Math.floor(s / 60);
++    var rem = s % 60;
++    if (m < 60) return m + 'm ' + rem + 's';
++    var h = Math.floor(m / 60);
++    return h + 'h ' + (m % 60) + 'm';
++  }
++
++  function eventTypeBadge(type) {
++    var colors = { join: '#22c55e', heartbeat: '#3b82f6', leave: '#ef4444' };
++    var icons  = { join: 'ion-log-in', heartbeat: 'ion-ios-pulse', leave: 'ion-log-out' };
++    var c = colors[type] || '#94a3b8';
++    var i = icons[type]  || 'ion-help';
++    return '<span style="display:inline-flex;align-items:center;gap:4px;'
++      + 'background:' + c + '22;color:' + c + ';border:1px solid ' + c + '44;'
++      + 'padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;">'
++      + '<i class="' + i + '"></i>' + capitalize(type || '—') + '</span>';
++  }
++
++  function serverBadge(type) {
++    if (type === 'public') {
++      return '<span class="label label-info" style="font-size:11px;">Público</span>';
++    }
++    if (type === 'private') {
++      return '<span class="label label-warning" style="font-size:11px;">Privado</span>';
++    }
++    return '<span class="text-muted">—</span>';
++  }
++
++  function statusBadge(isActive) {
++    if (isActive) {
++      return '<span class="label label-success" style="font-size:11px;">'
++        + '<i class="ion-record" style="font-size:8px;"></i> Activa</span>';
++    }
++    return '<span class="label label-default" style="font-size:11px;">Cerrada</span>';
++  }
++
++  function capitalize(str) {
++    if (!str) return '';
++    return str.charAt(0).toUpperCase() + str.slice(1);
++  }
++
++  /* ── UI helpers ──────────────────────────────────────────────── */
++  function setText(id, val) {
++    var el = $(id);
++    if (el) el.textContent = val;
++  }
++
++  function showSection() {
++    var s = $('section-events');
++    if (s) s.style.display = '';
++  }
++
++  function hideSection() {
++    var s = $('section-events');
++    if (s) s.style.display = 'none';
++  }
++
++  function showError(msg) {
++    var el = $('section-error');
++    if (!el) return;
++    $('error-message').textContent = msg;
++    el.style.display = '';
++  }
++
++  function hideError() {
++    var el = $('section-error');
++    if (el) el.style.display = 'none';
++  }
++
++  function setRefreshSpinner(on) {
++    var icon = document.querySelector('#btn-refresh i');
++    if (icon) {
++      icon.className = on ? 'ion-load-c pca-spin' : 'ion-android-sync';
++    }
++  }
++
++  function updateTimestamp() {
++    var el = $('last-updated');
++    if (!el) return;
++    var now = new Date();
++    var pad = function (n) { return String(n).padStart(2, '0'); };
++    el.textContent = 'Actualizado ' + pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
++  }
++
++})();
+diff --git a/frontend/admin/marca-detalle.html b/frontend/admin/marca-detalle.html
+index e55cbae..0f33f6b 100644
+--- a/frontend/admin/marca-detalle.html
++++ b/frontend/admin/marca-detalle.html
+@@ -40,6 +40,7 @@
+             <li class="active"><a href="/admin/marcas.html"><span class="nav-icon"><i class="ion-ios-people"></i></span><span class="nav-text">Marcas</span></a></li>
+             <li><a href="/admin/script-generator.html"><span class="nav-icon"><i class="ion-code"></i></span><span class="nav-text">Generador Script</span></a></li>
+             <li><a href="/admin/reportes.html"><span class="nav-icon"><i class="ion-ios-paper"></i></span><span class="nav-text">Reportes</span></a></li>
++            <li><a href="/admin/eventos.html"><span class="nav-icon"><i class="ion-ios-pulse"></i></span><span class="nav-text">Eventos</span></a></li>
+             <li class="nav-item">
+             <form method="POST" action="/api/v1/auth/logout" style="display:inline;">
+               <button type="submit" class="btn btn-sm white b-a m-x-xs" title="Cerrar sesion">
+diff --git a/frontend/admin/marcas.html b/frontend/admin/marcas.html
+index 83ae732..5d4435a 100644
+--- a/frontend/admin/marcas.html
++++ b/frontend/admin/marcas.html
+@@ -40,6 +40,7 @@
+             <li class="active"><a href="/admin/marcas.html"><span class="nav-icon"><i class="ion-ios-people"></i></span><span class="nav-text">Marcas</span></a></li>
+             <li><a href="/admin/script-generator.html"><span class="nav-icon"><i class="ion-code"></i></span><span class="nav-text">Generador Script</span></a></li>
+             <li><a href="/admin/reportes.html"><span class="nav-icon"><i class="ion-ios-paper"></i></span><span class="nav-text">Reportes</span></a></li>
++            <li><a href="/admin/eventos.html"><span class="nav-icon"><i class="ion-ios-pulse"></i></span><span class="nav-text">Eventos</span></a></li>
+             <li class="nav-item">
+             <form method="POST" action="/api/v1/auth/logout" style="display:inline;">
+               <button type="submit" class="btn btn-sm white b-a m-x-xs" title="Cerrar sesion">
+diff --git a/frontend/admin/reportes.html b/frontend/admin/reportes.html
+index 559a21e..021e22d 100644
+--- a/frontend/admin/reportes.html
++++ b/frontend/admin/reportes.html
+@@ -40,6 +40,7 @@
+             <li><a href="/admin/marcas.html"><span class="nav-icon"><i class="ion-ios-people"></i></span><span class="nav-text">Marcas</span></a></li>
+             <li><a href="/admin/script-generator.html"><span class="nav-icon"><i class="ion-code"></i></span><span class="nav-text">Generador Script</span></a></li>
+             <li class="active"><a href="/admin/reportes.html"><span class="nav-icon"><i class="ion-ios-paper"></i></span><span class="nav-text">Reportes</span></a></li>
++            <li><a href="/admin/eventos.html"><span class="nav-icon"><i class="ion-ios-pulse"></i></span><span class="nav-text">Eventos</span></a></li>
+             <li class="nav-item">
+             <form method="POST" action="/api/v1/auth/logout" style="display:inline;">
+               <button type="submit" class="btn btn-sm white b-a m-x-xs" title="Cerrar sesion">
+diff --git a/frontend/admin/script-generator.html b/frontend/admin/script-generator.html
+index 7e4f9ae..3c7d364 100644
+--- a/frontend/admin/script-generator.html
++++ b/frontend/admin/script-generator.html
+@@ -40,6 +40,7 @@
+             <li><a href="/admin/marcas.html"><span class="nav-icon"><i class="ion-ios-people"></i></span><span class="nav-text">Marcas</span></a></li>
+             <li class="active"><a href="/admin/script-generator.html"><span class="nav-icon"><i class="ion-code"></i></span><span class="nav-text">Generador Script</span></a></li>
+             <li><a href="/admin/reportes.html"><span class="nav-icon"><i class="ion-ios-paper"></i></span><span class="nav-text">Reportes</span></a></li>
++            <li><a href="/admin/eventos.html"><span class="nav-icon"><i class="ion-ios-pulse"></i></span><span class="nav-text">Eventos</span></a></li>
+             <li class="nav-item">
+             <form method="POST" action="/api/v1/auth/logout" style="display:inline;">
+               <button type="submit" class="btn btn-sm white b-a m-x-xs" title="Cerrar sesion">
+diff --git a/frontend/css/pca.css b/frontend/css/pca.css
+index c2859db..9b96ca7 100644
+--- a/frontend/css/pca.css
++++ b/frontend/css/pca.css
+@@ -258,3 +258,60 @@
+ 
+   #last-updated { display: none !important; }
+ }
++
++/* ── KPI cards — animación de entrada escalonada ── */
++@keyframes kpi-fade-in {
++  from { opacity: 0; transform: translateY(8px); }
++  to   { opacity: 1; transform: translateY(0);   }
++}
++#section-kpis > .kpi-card {
++  animation: kpi-fade-in 0.4s ease-out both;
++}
++#section-kpis > .kpi-card:nth-child(1) { animation-delay: 0.05s; }
++#section-kpis > .kpi-card:nth-child(2) { animation-delay: 0.10s; }
++#section-kpis > .kpi-card:nth-child(3) { animation-delay: 0.15s; }
++#section-kpis > .kpi-card:nth-child(4) { animation-delay: 0.20s; }
++#section-kpis > .kpi-card:nth-child(5) { animation-delay: 0.25s; }
++
++/* ── Tablet — KPIs en 3 columnas ── */
++@media (max-width: 991px) {
++  #section-kpis { flex-wrap: wrap !important; }
++  #section-kpis > div { flex: 1 1 30% !important; min-width: 30%; }
++}
++
++/* ── Mobile — KPIs en 2 columnas + sidebar overlay ── */
++@media (max-width: 768px) {
++  #section-kpis > div {
++    flex: 1 1 45% !important;
++    min-width: 45%;
++    border-right: none !important;
++    border-bottom: 1px solid rgba(148,163,184,0.12);
++  }
++
++  #section-charts .col-sm-6 { width: 100% !important; margin-bottom: 16px; }
++
++  /* Tabla: ocultar columnas 5, 6, 7 (Horas, Público, Privado) */
++  #table-daily th:nth-child(n+5),
++  #table-daily td:nth-child(n+5) { display: none; }
++
++  /* Filtros de rango compactos */
++  #range-filters .btn { padding: 4px 8px !important; font-size: 11px !important; }
++
++  /* Sidebar como overlay en mobile */
++  .navside {
++    position: fixed !important;
++    z-index: 1050 !important;
++    height: 100vh !important;
++    transform: translateX(-100%);
++    transition: transform 0.25s ease;
++  }
++  .app.aside-open .navside { transform: translateX(0) !important; }
++  #content { margin-left: 0 !important; }
++}
++
++/* ── Teléfonos pequeños — KPIs en 1 columna ── */
++@media (max-width: 480px) {
++  #section-kpis > div { flex: 1 1 100% !important; }
++  .app-header .navbar-brand { max-width: 120px; overflow: hidden; }
++  #last-updated, #script-status { display: none !important; }
++}
+diff --git a/frontend/index.html b/frontend/index.html
+index 8c567d9..87303a6 100644
+--- a/frontend/index.html
++++ b/frontend/index.html
+@@ -12,6 +12,7 @@
+   <!-- Meta tags -->
+   <meta name="description" content="Analytics de experiencias Roblox">
+   <meta name="theme-color" content="#2d3e50">
++  <meta name="robots" content="noindex, nofollow">
+ 
+   <link rel="shortcut icon" href="/dashboard/images/logo.png">
+ 
+@@ -103,11 +104,42 @@
+           </li>
+ 
+           <!-- Filtros de rango temporal -->
+-          <li class="nav-item">
+-            <div class="btn-group m-x-sm" role="group">
+-              <button id="btn-range-day"   class="btn btn-sm white b-a" data-range="day">Hoy</button>
+-              <button id="btn-range-week"  class="btn btn-sm white b-a btn-theme-active" data-range="week">Semana</button>
+-              <button id="btn-range-month" class="btn btn-sm white b-a" data-range="month">Mes</button>
++          <li class="nav-item" style="position:relative;">
++            <div id="range-controls" style="display:flex;align-items:center;gap:4px;padding:0 4px;">
++              <!-- Botones rápidos -->
++              <div class="btn-group btn-group-sm" id="range-quick" role="group">
++                <button class="btn white b-a" data-range="day"   id="btn-range-day">Hoy</button>
++                <button class="btn white b-a btn-theme-active" data-range="week"  id="btn-range-week">Semana</button>
++                <button class="btn white b-a" data-range="month" id="btn-range-month">Mes</button>
++              </div>
++              <!-- Botón personalizado -->
++              <button class="btn white b-a btn-sm" id="btn-range-custom" title="Rango personalizado" style="display:flex;align-items:center;gap:4px;">
++                <i class="ion-ios-calendar"></i>
++                <span id="custom-range-label" class="hidden-xs" style="font-size:11px;">Personalizado</span>
++              </button>
++            </div>
++            <!-- Date picker flotante -->
++            <div id="custom-date-picker" style="
++              display:none;position:absolute;top:calc(100% + 4px);right:0;
++              z-index:1050;background:var(--body-bg,#fff);
++              border:1px solid #e2e8f0;border-radius:8px;padding:16px;
++              box-shadow:0 8px 32px rgba(0,0,0,0.18);min-width:280px;
++            ">
++              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
++                <div>
++                  <label style="font-size:11px;color:#64748b;display:block;margin-bottom:4px;">Desde</label>
++                  <input type="date" id="date-from" style="width:100%;padding:6px 10px;border:1px solid #e2e8f0;border-radius:4px;font-size:13px;">
++                </div>
++                <div>
++                  <label style="font-size:11px;color:#64748b;display:block;margin-bottom:4px;">Hasta</label>
++                  <input type="date" id="date-to" style="width:100%;padding:6px 10px;border:1px solid #e2e8f0;border-radius:4px;font-size:13px;">
++                </div>
++              </div>
++              <div id="date-picker-error" style="display:none;font-size:11px;color:#ef4444;margin-bottom:8px;"></div>
++              <div style="display:flex;justify-content:flex-end;gap:8px;">
++                <button id="btn-date-cancel" class="btn white b-a btn-sm">Cancelar</button>
++                <button id="btn-date-apply" class="btn btn-sm" style="background:var(--brand-primary,#2d3e50);color:#fff;border:none;">Aplicar</button>
++              </div>
+             </div>
+           </li>
+ 
+@@ -198,68 +230,4 @@
+               <small class="text-muted">Desglose por día del período seleccionado</small>
+             </div>
+             <div class="table-responsive">
+-              <table id="table-daily" class="table table-striped b-t b-b m-b-0">
+-                <thead>
+-                  <tr>
+-                    <th>Fecha</th>
+-                    <th>Sesiones</th>
+-                    <th>Usuarios únicos</th>
+-                    <th>Tiempo promedio</th>
+-                    <th>Horas totales</th>
+-                    <th>Público</th>
+-                    <th>Privado</th>
+-                  </tr>
+-                </thead>
+-                <tbody></tbody>
+-              </table>
+-            </div>
+-          </div>
+-        </div>
+-
+-      </div>
+-    </div>
+-    <!-- / BODY -->
+-
+-    <!-- FOOTER -->
+-    <div class="app-footer white bg p-a b-t">
+-      <div class="pull-right text-sm text-muted">Peru City Analytics v0.2.0</div>
+-      <span class="text-sm text-muted">&copy; 2026 — Peru City Analytics</span>
+-    </div>
+-    <!-- / FOOTER -->
+-
+-  </div>
+-  <!-- / CONTENT -->
+-
+-<!-- ===== LAYOUT END ===== -->
+-
+-</div><!-- / #app -->
+-
+-<!-- ===== SCRIPTS — orden exacto, rutas absolutas ===== -->
+-
+-<!-- Plantilla Aside — jQuery y librerías base -->
+-<script src="/dashboard/libs/jquery/dist/jquery.js"></script>
+-<script src="/dashboard/libs/tether/dist/js/tether.min.js"></script>
+-<script src="/dashboard/libs/bootstrap/dist/js/bootstrap.js"></script>
+-<script src="/dashboard/libs/jQuery-Storage-API/jquery.storageapi.min.js"></script>
+-<script src="/dashboard/libs/PACE/pace.min.js"></script>
+-
+-<!-- Chart.js v2.2.1 — bundle incluye moment.js -->
+-<script src="/dashboard/libs/chart.js/dist/Chart.bundle.min.js"></script>
+-
+-<!-- Scripts de comportamiento de la plantilla Aside -->
+-<script src="/dashboard/scripts/app.js"></script>
+-<script src="/dashboard/scripts/ui-load.js"></script>
+-<script src="/dashboard/scripts/ui-jp.js"></script>
+-<!-- Scripts adicionales de la plantilla Aside -->
+-<script src="/dashboard/scripts/ajax.js"></script>
+-<script src="/dashboard/scripts/ui-nav.js"></script>
+-
+-<!-- Configuración y lógica custom de Peru City Analytics -->
+-<script src="/dashboard/js/config.js"></script>
+-<script src="/dashboard/js/api.js"></script>
+-<script src="/dashboard/js/theme.js"></script>
+-<script src="/dashboard/js/whitelabel.js"></script>
+-<script src="/dashboard/js/pages/dashboard.js"></script>
+-
+-</body>
+-</html>
++              <table id="table-daily" class=
+\ No newline at end of file
+diff --git a/frontend/js/api.js b/frontend/js/api.js
+index 3e7695d..b18cf8f 100644
+--- a/frontend/js/api.js
++++ b/frontend/js/api.js
+@@ -3,11 +3,6 @@
+  * Todas las funciones son async y manejan errores con mensajes en español.
+  */
+ 
+-/**
+- * Obtiene la configuración pública de una marca.
+- * @param {string} slug - Slug de la marca (ej: 'yape', 'demo')
+- * @returns {Promise<{slug, name, logo_url, banner_url, primary_color}>}
+- */
+ async function fetchBrandConfig(slug) {
+   try {
+     const res = await fetch(`${PCA_CONFIG.apiBase}/${slug}/config`);
+@@ -26,20 +21,25 @@ async function fetchBrandConfig(slug) {
+ }
+ 
+ /**
+- * Obtiene las métricas del dashboard para una marca y rango.
++ * Obtiene métricas del dashboard.
+  * @param {string} slug
+- * @param {'day'|'week'|'month'} range
+- * @returns {Promise<{data: {public: Object, private: Object}}>}
++ * @param {string} range - 'day' | 'week' | 'month' | 'custom'
++ * @param {string|null} dateFrom - YYYY-MM-DD (solo cuando range='custom')
++ * @param {string|null} dateTo   - YYYY-MM-DD (solo cuando range='custom')
+  */
+-async function fetchMetrics(slug, range) {
++async function fetchMetrics(slug, range, dateFrom, dateTo) {
+   try {
+-    const res = await fetch(`${PCA_CONFIG.apiBase}/${slug}/metrics?range=${range}&compare=true`);
++    let url = `${PCA_CONFIG.apiBase}/${slug}/metrics?compare=true`;
++    if (range === 'custom' && dateFrom && dateTo) {
++      url += `&date_from=${dateFrom}&date_to=${dateTo}`;
++    } else {
++      url += `&range=${range || 'week'}`;
++    }
++    const res = await fetch(url);
+     if (!res.ok) throw new Error(`Error al obtener métricas: ${res.status}`);
+     return await res.json();
+   } catch (err) {
+-    if (err instanceof TypeError) {
+-      throw new Error('Error de red al obtener métricas.');
+-    }
++    if (err instanceof TypeError) throw new Error('Error de red al obtener métricas.');
+     throw err;
+   }
+ }
+@@ -47,48 +47,49 @@ async function fetchMetrics(slug, range) {
+ /**
+  * Obtiene las métricas diarias para una marca y rango.
+  * @param {string} slug
+- * @param {'week'|'month'} range
+- * @returns {Promise<{data: Array}>}
++ * @param {string} range
++ * @param {string|null} dateFrom
++ * @param {string|null} dateTo
+  */
+-async function fetchDailyMetrics(slug, range) {
+-  // El endpoint /metrics/daily solo acepta week o month — day no es válido
+-  const dailyRange = range === 'day' ? 'week' : range;
++async function fetchDailyMetrics(slug, range, dateFrom, dateTo) {
+   try {
+-    const res = await fetch(`${PCA_CONFIG.apiBase}/${slug}/metrics/daily?range=${dailyRange}`);
++    let url;
++    if (range === 'custom' && dateFrom && dateTo) {
++      url = `${PCA_CONFIG.apiBase}/${slug}/metrics/daily?date_from=${dateFrom}&date_to=${dateTo}`;
++    } else {
++      const dailyRange = range === 'day' ? 'week' : (range || 'week');
++      url = `${PCA_CONFIG.apiBase}/${slug}/metrics/daily?range=${dailyRange}`;
++    }
++    const res = await fetch(url);
+     if (!res.ok) throw new Error(`Error al obtener métricas diarias: ${res.status}`);
+     return await res.json();
+   } catch (err) {
+-    if (err instanceof TypeError) {
+-      throw new Error('Error de red al obtener métricas diarias.');
+-    }
++    if (err instanceof TypeError) throw new Error('Error de red al obtener métricas diarias.');
+     throw err;
+   }
+ }
+ 
+-/**
+- * Dispara el refresh de caché del dashboard.
+- * @param {string} slug
+- * @returns {Promise<{data: {refreshed_at: string}}>}
+- */
+ async function triggerRefresh(slug) {
+   try {
+     const res = await fetch(`${PCA_CONFIG.apiBase}/${slug}/refresh`, { method: 'POST' });
+     if (!res.ok) throw new Error(`Error al refrescar: ${res.status}`);
+     return await res.json();
+   } catch (err) {
+-    if (err instanceof TypeError) {
+-      throw new Error('Error de red al refrescar los datos.');
+-    }
++    if (err instanceof TypeError) throw new Error('Error de red al refrescar los datos.');
+     throw err;
+   }
+ }
+ 
+ /**
+- * Construye la URL de exportación CSV (sin hacer fetch).
++ * Construye la URL de exportación CSV.
+  * @param {string} slug
+- * @param {'day'|'week'|'month'} range
+- * @returns {string} URL lista para usar en window.location.href
++ * @param {string} range
++ * @param {string|null} dateFrom
++ * @param {string|null} dateTo
+  */
+-function getExportUrl(slug, range) {
+-  return `${PCA_CONFIG.apiBase}/${slug}/export.csv?range=${range}`;
++function getExportUrl(slug, range, dateFrom, dateTo) {
++  if (range === 'custom' && dateFrom && dateTo) {
++    return `${PCA_CONFIG.apiBase}/${slug}/export.csv?date_from=${dateFrom}&date_to=${dateTo}`;
++  }
++  return `${PCA_CONFIG.apiBase}/${slug}/export.csv?range=${range || 'week'}`;
+ }
+diff --git a/frontend/js/pages/dashboard.js b/frontend/js/pages/dashboard.js
+index 9563fb0..1a798d9 100644
+--- a/frontend/js/pages/dashboard.js
++++ b/frontend/js/pages/dashboard.js
+@@ -6,12 +6,15 @@
+ // ─── ESTADO GLOBAL ─────────────────────────────────────────────────────────
+ var currentSlug       = '';
+ var currentRange      = PCA_CONFIG.defaultRange || 'week';
++var customDateFrom    = null;   // string YYYY-MM-DD
++var customDateTo      = null;   // string YYYY-MM-DD
+ var brandConfig       = {};
+-var mainChart         = null;   // Chart.js — línea de sesiones diarias
+-var serverChart       = null;   // Chart.js — barras público vs privado
+-var currentMetric     = 'sessions';  // métrica activa del gráfico de línea
+-var currentPubSeries  = [];     // caché de series para el toggle de métrica
++var mainChart         = null;
++var serverChart       = null;
++var currentMetric     = 'sessions';
++var currentPubSeries  = [];
+ var currentPrivSeries = [];
++var currentPrevSeries = [];
+ 
+ // ─── INIT ──────────────────────────────────────────────────────────────────
+ document.addEventListener('DOMContentLoaded', async function () {
+@@ -29,7 +32,6 @@ document.addEventListener('DOMContentLoaded', async function () {
+     applyWhitelabel(brandConfig);
+     renderScriptStatus(brandConfig.health, brandConfig.last_event_at);
+   } catch (e) {
+-    // Si la marca no existe, redirigir a la página de error 404
+     if (e.message && e.message.indexOf('no existe') !== -1) {
+       window.location.href = '/dashboard/404-marca.html?brand=' + encodeURIComponent(currentSlug);
+       return;
+@@ -39,6 +41,7 @@ document.addEventListener('DOMContentLoaded', async function () {
+   }
+ 
+   initRangeButtons();
++  initDatePicker();
+   initRefreshButton();
+   initExportButton();
+   initThemeButton();
+@@ -73,7 +76,7 @@ function formatMinutes(mins) {
+   return h + 'h' + (m > 0 ? ' ' + m + 'min' : '');
+ }
+ 
+-function formatDate(dateStr) {
++function formatDateStr(dateStr) {
+   if (!dateStr) return '';
+   var parts = dateStr.split('-');
+   if (parts.length !== 3) return dateStr;
+@@ -81,19 +84,16 @@ function formatDate(dateStr) {
+ }
+ 
+ function formatDateShort(dateStr) {
++  // Accepts 'YYYY-MM-DD' string or Date object
+   if (!dateStr) return '';
++  if (dateStr instanceof Date) {
++    return dateStr.toLocaleDateString('es-PE', { day: '2-digit', month: 'short' });
++  }
+   var parts = dateStr.split('-');
+   if (parts.length !== 3) return dateStr;
+   return parts[2] + '/' + parts[1];
+ }
+ 
+-/**
+- * Convierte un color HEX a rgba() — necesario para Chart.js v2
+- * que no soporta colores hex con canal alpha (#rrggbbaa).
+- * @param {string} hex - Color en formato #RRGGBB
+- * @param {number} alpha - Opacidad entre 0 y 1
+- * @returns {string} rgba(r, g, b, alpha)
+- */
+ function hexToRgba(hex, alpha) {
+   if (!hex || hex.length < 7) return 'rgba(108, 58, 222, ' + alpha + ')';
+   var r = parseInt(hex.slice(1, 3), 16);
+@@ -102,36 +102,40 @@ function hexToRgba(hex, alpha) {
+   return 'rgba(' + r + ', ' + g + ', ' + b + ', ' + alpha + ')';
+ }
+ 
+-/**
+- * Calcula la variación porcentual entre dos valores.
+- * @param {number} current - Valor actual
+- * @param {number} previous - Valor del período anterior
+- * @returns {number|null} Variación % o null si no hay dato previo
+- */
+ function calcVariation(current, previous) {
+   if (previous === null || previous === undefined || previous === 0) return null;
+   return ((current - previous) / previous) * 100;
+ }
+ 
+-/**
+- * Genera el HTML del badge de variación % para un KPI.
+- * @param {number|null} pct - Porcentaje de variación (puede ser negativo)
+- * @returns {string} HTML string con el badge, o cadena vacía si no hay dato
+- */
+-function renderVariation(pct) {
++function renderVariation(pct, rangeLabel) {
+   if (pct === null || pct === undefined) return '';
+   var rounded = Math.round(pct * 10) / 10;
+   var sign    = rounded >= 0 ? '+' : '';
+   var cls     = rounded >= 0 ? 'text-success' : 'text-danger';
+   var icon    = rounded >= 0 ? 'fa-arrow-up'  : 'fa-arrow-down';
++  var label   = rangeLabel || 'vs anterior';
+   return '<div class="pca-variation">' +
+            '<span class="' + cls + '">' +
+              '<i class="fa ' + icon + '"></i> ' + sign + rounded + '%' +
+            '</span>' +
+-           '<small class="text-muted"> vs anterior</small>' +
++           '<small class="text-muted"> ' + label + '</small>' +
+          '</div>';
+ }
+ 
++function getComparisonLabel() {
++  if (currentRange === 'custom' && customDateFrom && customDateTo) {
++    // Calcular período anterior del mismo tamaño
++    var from = new Date(customDateFrom + 'T00:00:00Z');
++    var to   = new Date(customDateTo   + 'T00:00:00Z');
++    var days = Math.round((to - from) / 86400000);
++    var prevTo   = new Date(from - 86400000);
++    var prevFrom = new Date(prevTo - (days - 1) * 86400000);
++    return 'vs ' + formatDateShort(prevFrom) + ' — ' + formatDateShort(prevTo);
++  }
++  var labels = { day: 'vs ayer', week: 'vs semana anterior', month: 'vs mes anterior' };
++  return labels[currentRange] || 'vs anterior';
++}
++
+ // ─── RANGO DE FECHAS ──────────────────────────────────────────────────────
+ 
+ function initRangeButtons() {
+@@ -140,15 +144,105 @@ function initRangeButtons() {
+     if (btn.dataset.range === currentRange) btn.classList.add('btn-theme-active');
+     btn.addEventListener('click', async function () {
+       var range = this.dataset.range;
+-      if (range === currentRange) return;
++      if (range === currentRange && currentRange !== 'custom') return;
+       buttons.forEach(function (b) { b.classList.remove('btn-theme-active'); });
++      document.getElementById('btn-range-custom').classList.remove('btn-theme-active');
+       this.classList.add('btn-theme-active');
+       currentRange = range;
++      customDateFrom = null;
++      customDateTo   = null;
++      var label = document.getElementById('custom-range-label');
++      if (label) label.textContent = 'Personalizado';
+       await loadDashboard(currentSlug, currentRange);
+     });
+   });
+ }
+ 
++// ─── DATE PICKER ─────────────────────────────────────────────────────────
++
++function initDatePicker() {
++  var picker    = document.getElementById('custom-date-picker');
++  var btnCustom = document.getElementById('btn-range-custom');
++  var btnApply  = document.getElementById('btn-date-apply');
++  var btnCancel = document.getElementById('btn-date-cancel');
++  var dateFrom  = document.getElementById('date-from');
++  var dateTo    = document.getElementById('date-to');
++  var errorEl   = document.getElementById('date-picker-error');
++
++  if (!picker || !btnCustom) return;
++
++  // Valores por defecto: últimos 7 días
++  var today   = new Date();
++  var weekAgo = new Date(today - 7 * 86400000);
++  dateFrom.value = weekAgo.toISOString().split('T')[0];
++  dateTo.value   = today.toISOString().split('T')[0];
++  dateTo.max     = today.toISOString().split('T')[0];
++
++  // Toggle
++  btnCustom.addEventListener('click', function (e) {
++    e.stopPropagation();
++    picker.style.display = picker.style.display === 'none' ? 'block' : 'none';
++  });
++
++  // Cerrar al hacer click fuera
++  document.addEventListener('click', function (e) {
++    if (!picker.contains(e.target) && e.target !== btnCustom) {
++      picker.style.display = 'none';
++    }
++  });
++
++  // Validación en tiempo real
++  dateFrom.addEventListener('change', function () {
++    dateTo.min = dateFrom.value;
++    validateDateRange();
++  });
++  dateTo.addEventListener('change', validateDateRange);
++
++  function validateDateRange() {
++    var from = new Date(dateFrom.value + 'T00:00:00Z');
++    var to   = new Date(dateTo.value   + 'T00:00:00Z');
++    var days = Math.round((to - from) / 86400000);
++    errorEl.style.display = 'none';
++    if (to < from) {
++      errorEl.textContent = 'La fecha de fin debe ser posterior a la de inicio';
++      errorEl.style.display = 'block';
++      btnApply.disabled = true;
++      return false;
++    }
++    if (days > 90) {
++      errorEl.textContent = 'El rango máximo es de 90 días';
++      errorEl.style.display = 'block';
++      btnApply.disabled = true;
++      return false;
++    }
++    btnApply.disabled = false;
++    return true;
++  }
++
++  btnCancel.addEventListener('click', function () {
++    picker.style.display = 'none';
++  });
++
++  btnApply.addEventListener('click', async function () {
++    if (!validateDateRange()) return;
++
++    customDateFrom = dateFrom.value;
++    customDateTo   = dateTo.value;
++    currentRange   = 'custom';
++
++    // Actualizar label del botón
++    var label = document.getElementById('custom-range-label');
++    if (label) label.textContent = formatDateShort(customDateFrom) + ' — ' + formatDateShort(customDateTo);
++
++    // Marcar botón personalizado como activo
++    document.querySelectorAll('[data-range]').forEach(function (b) { b.classList.remove('btn-theme-active'); });
++    btnCustom.classList.add('btn-theme-active');
++    picker.style.display = 'none';
++
++    await loadDashboard(currentSlug, 'custom');
++  });
++}
++
+ // ─── REFRESH ──────────────────────────────────────────────────────────────
+ 
+ function initRefreshButton() {
+@@ -176,7 +270,7 @@ function initExportButton() {
+   var btn = document.getElementById('btn-export');
+   if (!btn) return;
+   btn.addEventListener('click', function () {
+-    window.location.href = getExportUrl(currentSlug, currentRange);
++    window.location.href = getExportUrl(currentSlug, currentRange, customDateFrom, customDateTo);
+   });
+ }
+ 
+@@ -188,7 +282,7 @@ function initThemeButton() {
+   btn.addEventListener('click', function () { toggleTheme(); });
+ }
+ 
+-// ─── TOGGLE DE MÉTRICA EN EL GRÁFICO DE LÍNEA ─────────────────────────────
++// ─── TOGGLE DE MÉTRICA ────────────────────────────────────────────────────
+ 
+ function initMetricButtons() {
+   var buttons = document.querySelectorAll('[data-metric]');
+@@ -201,10 +295,6 @@ function initMetricButtons() {
+   });
+ }
+ 
+-/**
+- * Actualiza la serie del gráfico de línea sin reconstruir el Chart completo.
+- * @param {'sessions'|'dau'|'avg_minutes'} metric
+- */
+ function updateLineChart(metric) {
+   currentMetric = metric;
+   if (!mainChart) return;
+@@ -225,7 +315,6 @@ function updateLineChart(metric) {
+              ((privSeries[i] && privSeries[i].dau) || 0);
+     });
+   } else if (metric === 'avg_minutes') {
+-    // Promedio de duración: usar serie pública como referencia (la más representativa)
+     newData = baseSeries.map(function (d, i) {
+       return (pubSeries[i] && pubSeries[i].avg_minutes) || 0;
+     });
+@@ -235,15 +324,17 @@ function updateLineChart(metric) {
+ 
+   mainChart.data.datasets[0].data  = newData;
+   mainChart.data.datasets[0].label = getLabelForMetric(metric);
++
++  if (currentPrevSeries.length > 0 && mainChart.data.datasets[1]) {
++    mainChart.data.datasets[1].data = currentPrevSeries.map(function (d) {
++      return d.sessions || 0;
++    });
++  }
++
+   mainChart.update();
+ 
+-  // Actualizar estado visual de los botones de toggle
+   document.querySelectorAll('[data-metric]').forEach(function (btn) {
+-    if (btn.dataset.metric === metric) {
+-      btn.classList.add('active-metric');
+-    } else {
+-      btn.classList.remove('active-metric');
+-    }
++    btn.classList.toggle('active-metric', btn.dataset.metric === metric);
+   });
+ }
+ 
+@@ -259,22 +350,25 @@ async function loadDashboard(slug, range) {
+   var errDiv = document.getElementById('section-error');
+   if (errDiv) errDiv.classList.add('hide');
+ 
++  var dfrom = range === 'custom' ? customDateFrom : null;
++  var dto   = range === 'custom' ? customDateTo   : null;
++
+   try {
+     var results = await Promise.all([
+-      fetchMetrics(slug, range),
+-      fetchDailyMetrics(slug, range)
++      fetchMetrics(slug, range, dfrom, dto),
++      fetchDailyMetrics(slug, range, dfrom, dto)
+     ]);
+     renderKPIs(results[0].data);
+     renderCharts(results[0].data);
+     renderTable(results[1].data);
+ 
+-    // Actualizar indicador de "última actualización"
+     var lu = document.getElementById('last-updated');
+     if (lu) {
+       var now = new Date();
+       lu.textContent = 'Actualizado ' + now.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
+     }
+   } catch (e) {
++    renderEmptyState('section-kpis', 'ion-ios-alert-outline', 'Error al cargar los datos', e.message);
+     mostrarError('Error al cargar los datos: ' + e.message);
+   }
+ }
+@@ -286,11 +380,9 @@ function mostrarLoading() {
+   if (kpis) {
+     var html = '';
+     for (var i = 0; i < 5; i++) {
+-      html += '<div class="b-r">' +
+-                '<div class="padding">' +
+-                  '<div class="pca-loading" style="min-height:110px;border-radius:4px;"></div>' +
+-                '</div>' +
+-              '</div>';
++      html += '<div class="b-r"><div class="padding">' +
++              '<div class="pca-loading" style="min-height:110px;border-radius:4px;"></div>' +
++              '</div></div>';
+     }
+     kpis.innerHTML = html;
+   }
+@@ -314,76 +406,46 @@ function mostrarError(mensaje) {
+   console.error('[PCA Error]', mensaje);
+ }
+ 
++// ─── ESTADOS VACÍOS ───────────────────────────────────────────────────────
++
++function renderEmptyState(containerId, icon, title, subtitle) {
++  var el = document.getElementById(containerId);
++  if (!el) return;
++  el.innerHTML =
++    '<div style="width:100%;padding:56px 24px;text-align:center;color:var(--text-muted,#64748b);">' +
++      '<i class="' + (icon || 'ion-ios-analytics-outline') + '" style="font-size:52px;opacity:0.25;display:block;margin-bottom:16px;"></i>' +
++      '<p style="font-size:14px;font-weight:500;margin:0 0 6px;color:inherit;">' + (title || '') + '</p>' +
++      (subtitle ? '<p style="font-size:12px;margin:0;opacity:0.7;">' + subtitle + '</p>' : '') +
++    '</div>';
++}
++
+ // ─── KPIs ─────────────────────────────────────────────────────────────────
+ 
+ function renderKPIs(data) {
+   var pub  = data['public']  || {};
+   var priv = data['private'] || {};
+-  var prev = data['previous'] || null;   // puede ser null si compare=false
++  var prev = data['previous'] || null;
+ 
+   var totalSessions = (pub.sessions || 0) + (priv.sessions || 0);
+-  // Estado vacío
+   if (totalSessions === 0 && !(pub.mau || 0) && !(priv.mau || 0)) {
+-    renderEmptyState('section-kpis', 'Sin sesiones en este período');
++    renderEmptyState('section-kpis', 'ion-ios-analytics-outline',
++      'Sin sesiones en este período',
++      'Probá con un rango de fechas diferente');
+     return;
+   }
+-  var totalDau      = parseFloat(pub.dau || 0) + parseFloat(priv.dau || 0);
+-  // MAU: ventana de 30 días fija — se suman ambos tipos
+-  var totalMau      = (pub.mau || 0) + (priv.mau || 0);
+-  var avgMinutes    = pub.avg_session_minutes || 0;
+-  var totalHours    = (pub.total_hours || 0) + (priv.total_hours || 0);
++
++  var compLabel  = getComparisonLabel();
++  var totalDau   = parseFloat(pub.dau || 0) + parseFloat(priv.dau || 0);
++  var totalMau   = (pub.mau || 0) + (priv.mau || 0);
++  var avgMinutes = pub.avg_session_minutes || 0;
++  var totalHours = (pub.total_hours || 0) + (priv.total_hours || 0);
+ 
+   var kpis = [
+-    {
+-      valor:     formatNumber(totalSessions),
+-      rawTarget: totalSessions,
+-      tipo:      'number',
+-      label:     'Sesiones totales',
+-      icono:     'ion-ios-people',
+-      pub:       formatNumber(pub.sessions),
+-      priv:      formatNumber(priv.sessions),
+-      varPct:    prev ? calcVariation(totalSessions, prev.sessions) : null
+-    },
+-    {
+-      valor:     formatNumber(Math.round(totalDau)),
+-      rawTarget: Math.round(totalDau),
+-      tipo:      'number',
+-      label:     'Usuarios activos / día',
+-      icono:     'ion-person',
+-      pub:       formatNumber(Math.round(pub.dau || 0)),
+-      priv:      formatNumber(Math.round(priv.dau || 0)),
+-      varPct:    prev ? calcVariation(totalDau, prev.dau) : null
+-    },
+-    {
+-      valor:     formatNumber(totalMau),
+-      rawTarget: totalMau,
+-      tipo:      'number',
+-      label:     'Usuarios activos (30 días)',
+-      icono:     'ion-calendar',
+-      pub:       formatNumber(pub.mau),
+-      priv:      formatNumber(priv.mau),
+-      varPct:    prev ? calcVariation(totalMau, prev.mau) : null
+-    },
+-    {
+-      valor:     formatMinutes(avgMinutes),
+-      rawTarget: avgMinutes,
+-      tipo:      'minutes',
+-      label:     'Tiempo promedio sesión',
+-      icono:     'ion-clock',
+-      pub:       formatMinutes(pub.avg_session_minutes),
+-      priv:      formatMinutes(priv.avg_session_minutes),
+-      varPct:    prev ? calcVariation(avgMinutes, prev.avg_session_minutes) : null
+-    },
+-    {
+-      valor:     formatNumber(Math.round(totalHours)) + 'h',
+-      rawTarget: Math.round(totalHours),
+-      tipo:      'hours',
+-      label:     'Horas totales de juego',
+-      icono:     'ion-ios-timer',
+-      pub:       formatNumber(Math.round(pub.total_hours || 0)) + 'h',
+-      priv:      formatNumber(Math.round(priv.total_hours || 0)) + 'h',
+-      varPct:    prev ? calcVariation(totalHours, prev.total_hours) : null
+-    }
++    { valor: formatNumber(totalSessions),           rawTarget: totalSessions,           tipo: 'number',  label: 'Sesiones totales',         icono: 'ion-ios-people',  pub: formatNumber(pub.sessions),                      priv: formatNumber(priv.sessions),                      varPct: prev ? calcVariation(totalSessions, prev.sessions) : null },
++    { valor: formatNumber(Math.round(totalDau)),    rawTarget: Math.round(totalDau),    tipo: 'number',  label: 'Usuarios activos / día',    icono: 'ion-person',      pub: formatNumber(Math.round(pub.dau || 0)),           priv: formatNumber(Math.round(priv.dau || 0)),           varPct: prev ? calcVariation(totalDau, prev.dau) : null },
++    { valor: formatNumber(totalMau),                rawTarget: totalMau,                tipo: 'number',  label: 'Usuarios activos (30 días)',icono: 'ion-calendar',    pub: formatNumber(pub.mau),                           priv: formatNumber(priv.mau),                           varPct: prev ? calcVariation(totalMau, prev.mau) : null },
++    { valor: formatMinutes(avgMinutes),             rawTarget: avgMinutes,              tipo: 'minutes', label: 'Tiempo promedio sesión',    icono: 'ion-clock',       pub: formatMinutes(pub.avg_session_minutes),           priv: formatMinutes(priv.avg_session_minutes),           varPct: prev ? calcVariation(avgMinutes, prev.avg_session_minutes) : null },
++    { valor: formatNumber(Math.round(totalHours)) + 'h', rawTarget: Math.round(totalHours), tipo: 'hours', label: 'Horas totales de juego', icono: 'ion-ios-timer',   pub: formatNumber(Math.round(pub.total_hours || 0)) + 'h', priv: formatNumber(Math.round(priv.total_hours || 0)) + 'h', varPct: prev ? calcVariation(totalHours, prev.total_hours) : null }
+   ];
+ 
+   var section = document.getElementById('section-kpis');
+@@ -391,7 +453,7 @@ function renderKPIs(data) {
+ 
+   var html = '';
+   kpis.forEach(function (kpi) {
+-    html += '<div class="b-r">' +
++    html += '<div class="b-r kpi-card">' +
+               '<div class="padding text-center">' +
+                 '<div class="m-b-sm"><i class="' + kpi.icono + ' text-brand" style="font-size:28px;"></i></div>' +
+                 '<h2 class="_600 m-t-xs m-b-xs kpi-value" data-target="' + (kpi.rawTarget || 0) + '" data-type="' + (kpi.tipo || 'number') + '">' + kpi.valor + '</h2>' +
+@@ -400,59 +462,75 @@ function renderKPIs(data) {
+                   '<span class="label info m-x-xs">Púb: ' + kpi.pub + '</span>' +
+                   '<span class="label default m-x-xs">Priv: ' + kpi.priv + '</span>' +
+                 '</div>' +
+-                renderVariation(kpi.varPct) +
++                renderVariation(kpi.varPct, compLabel) +
+               '</div>' +
+             '</div>';
+   });
+ 
+   section.innerHTML = html;
+ 
+-  // Animar contadores numéricos
+-  setTimeout(function() {
++  requestAnimationFrame(function() {
+     section.querySelectorAll('.kpi-value[data-target]').forEach(function(el) {
+       var target = parseFloat(el.dataset.target) || 0;
+       var type   = el.dataset.type || 'number';
+-      animateCounter(el, target, 800, function(val) {
++      animateCounter(el, target, 900, function(val) {
+         if (type === 'hours')   return Math.round(val) + 'h';
+         if (type === 'minutes') return formatMinutes(val);
+         return formatNumber(Math.round(val));
+       });
+     });
+-  }, 50);
++  });
+ }
+ 
+ // ─── CHARTS ───────────────────────────────────────────────────────────────
+ 
++var TOOLTIP_DEFAULTS = {
++  enabled: true,
++  mode: 'nearest',
++  intersect: false,
++  backgroundColor: 'rgba(15,23,42,0.92)',
++  titleFontSize: 11,
++  titleFontColor: '#94a3b8',
++  bodyFontSize: 13,
++  bodyFontColor: '#f1f5f9',
++  bodyFontStyle: 'bold',
++  borderColor: 'rgba(255,255,255,0.08)',
++  borderWidth: 1,
++  cornerRadius: 6,
++  xPadding: 12,
++  yPadding: 10,
++  displayColors: false,
++  caretSize: 6
++};
++
+ function renderCharts(data) {
+   var pub  = data['public']  || {};
+   var priv = data['private'] || {};
++  var prev = data['previous'] || null;
+ 
+   var pubSeries  = pub.time_series  || [];
+   var privSeries = priv.time_series || [];
++  var prevSeries = (prev && prev.time_series) ? prev.time_series : [];
+ 
+-  // Cachear series para el toggle de métrica
+   currentPubSeries  = pubSeries;
+   currentPrivSeries = privSeries;
++  currentPrevSeries = prevSeries;
+ 
+-  // Necesitamos series con datos para renderizar
+-  if (!pubSeries.length && !privSeries.length) return;
++  if (!pubSeries.length && !privSeries.length) {
++    renderEmptyState('section-charts', 'ion-ios-stats-outline',
++      'Sin datos de gráficos', 'No hay series temporales para el período seleccionado');
++    return;
++  }
+ 
+   var baseSeries = pubSeries.length >= privSeries.length ? pubSeries : privSeries;
+   var labels = baseSeries.map(function (d) { return formatDateShort(d.date); });
++  var color  = (brandConfig && brandConfig.primary_color) ? brandConfig.primary_color : '#6C3ADE';
+ 
+-  var color = (brandConfig && brandConfig.primary_color) ? brandConfig.primary_color : '#6C3ADE';
+-
+-  // Resetear métrica activa a 'sessions' al cargar nuevos datos
+   currentMetric = 'sessions';
+   document.querySelectorAll('[data-metric]').forEach(function (btn) {
+-    if (btn.dataset.metric === 'sessions') {
+-      btn.classList.add('active-metric');
+-    } else {
+-      btn.classList.remove('active-metric');
+-    }
++    btn.classList.toggle('active-metric', btn.dataset.metric === 'sessions');
+   });
+ 
+-  // ── Helper: stepSize inteligente según el máximo del dataset ─────────
+   function smartStep(values) {
+     var max = Math.max.apply(null, values.concat([1]));
+     if (max <= 10)   return 1;
+@@ -463,140 +541,113 @@ function renderCharts(data) {
+     return Math.ceil(max / 10 / 100) * 100;
+   }
+ 
+-  // ── Gráfico 1: Línea — sesiones totales diarias ───────────────────────
+   var ctx1 = document.getElementById('chart-sessions');
+   if (ctx1) {
+     if (mainChart) { mainChart.destroy(); mainChart = null; }
+ 
+-    var totalByDay = baseSeries.map(function (d, i) {
++    var totalByDay  = baseSeries.map(function (d, i) {
+       return ((pubSeries[i]  && pubSeries[i].sessions)  || 0) +
+              ((privSeries[i] && privSeries[i].sessions) || 0);
+     });
++    var hasPrevData = prevSeries.length > 0;
++    var prevData    = prevSeries.map(function (d) { return d.sessions || 0; });
++
++    var datasets = [{
++      label: 'Período actual',
++      data: totalByDay,
++      borderColor: color,
++      backgroundColor: hexToRgba(color, 0.12),
++      fill: true,
++      borderWidth: 2.5,
++      lineTension: 0.3,
++      pointRadius: 4,
++      pointHoverRadius: 7,
++      pointHitRadius: 20
++    }];
++
++    if (hasPrevData) {
++      datasets.push({
++        label: getComparisonLabel(),
++        data: prevData,
++        borderColor: hexToRgba(color, 0.4),
++        backgroundColor: 'transparent',
++        fill: false,
++        borderWidth: 1.5,
++        borderDash: [5, 5],
++        lineTension: 0.3,
++        pointRadius: 2,
++        pointHoverRadius: 5,
++        pointHitRadius: 10
++      });
++    }
+ 
+     mainChart = new Chart(ctx1, {
+       type: 'line',
+-      data: {
+-        labels: labels,
+-        datasets: [{
+-          label: 'Sesiones',
+-          data: totalByDay,
+-          borderColor: color,
+-          backgroundColor: hexToRgba(color, 0.15),
+-          fill: true,
+-          borderWidth: 2,
+-          lineTension: 0.3,
+-          pointRadius: 4,
+-          pointHoverRadius: 7,
+-          pointHitRadius: 30        // área de detección generosa — v2 requiere esto en el dataset
+-        }]
+-      },
++      data: { labels: labels, datasets: datasets },
+       options: {
+         responsive: true,
+         maintainAspectRatio: false,
+-        legend: { display: false },
+-        tooltips: {
+-          enabled: true,
+-          mode: 'index',
+-          intersect: false,
+-          backgroundColor: 'rgba(0,0,0,0.75)',
+-          titleFontColor: '#ffffff',
+-          titleFontSize: 12,
+-          bodyFontColor: '#ffffff',
+-          bodyFontSize: 13,
+-          borderColor: 'rgba(255,255,255,0.1)',
+-          borderWidth: 1,
+-          cornerRadius: 4,
+-          xPadding: 10,
+-          yPadding: 8,
++        legend: { display: hasPrevData, position: 'top', labels: { fontSize: 11, boxWidth: 20, padding: 16 } },
++        tooltips: Object.assign({}, TOOLTIP_DEFAULTS, {
+           callbacks: {
+-            title: function (tooltipItems) {
+-              return tooltipItems[0].xLabel;
+-            },
+-            label: function (tooltipItem, data) {
+-              var label = data.datasets[tooltipItem.datasetIndex].label || '';
+-              var value = tooltipItem.yLabel;
+-              if (label === 'Tiempo prom. (min)') return label + ': ' + Math.round(value) + ' min';
+-              if (label === 'Horas totales') return label + ': ' + Math.round(value) + 'h';
+-              return label + ': ' + Math.round(value).toLocaleString('es-PE');
++            title: function (items) { return items[0] ? items[0].xLabel : ''; },
++            label: function (item, d) {
++              var label = d.datasets[item.datasetIndex].label || '';
++              var val   = item.yLabel;
++              if (currentMetric === 'avg_minutes') return label + ': ' + Math.round(val) + ' min';
++              if (currentMetric === 'total_hours')  return label + ': ' + Math.round(val) + 'h';
++              return label + ': ' + Number(val).toLocaleString('es-PE');
+             }
+           }
+-        },
+-        hover: { mode: 'index', intersect: false },
++        }),
++        hover: { mode: 'nearest', intersect: false, animationDuration: 100 },
+         scales: {
+           xAxes: [{ gridLines: { display: false }, ticks: { fontSize: 11 } }],
+-          yAxes: [{
+-            ticks: {
+-              beginAtZero: true,
+-              fontSize: 11,
+-              stepSize: smartStep(totalByDay),
+-              callback: function (value) {
+-                if (value % 1 !== 0) return '';
+-                if (value >= 1000) return (value / 1000).toFixed(1) + 'k';
+-                return value;
+-              }
++          yAxes: [{ ticks: {
++            beginAtZero: true, fontSize: 11,
++            stepSize: smartStep(totalByDay),
++            callback: function (v) {
++              if (v % 1 !== 0) return '';
++              return v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v;
+             }
+-          }]
++          }}]
+         }
+       }
+     });
+   }
+ 
+-  // ── Gráfico 2: Barras apiladas — público vs privado ───────────────────
+   var ctx2 = document.getElementById('chart-server-type');
+   if (ctx2) {
+     if (serverChart) { serverChart.destroy(); serverChart = null; }
+-
+     serverChart = new Chart(ctx2, {
+       type: 'bar',
+       data: {
+         labels: labels,
+         datasets: [
+-          {
+-            label: 'Público',
+-            data: pubSeries.map(function (d) { return d.sessions || 0; }),
+-            backgroundColor: hexToRgba(color, 0.85)
+-          },
+-          {
+-            label: 'Privado',
+-            data: privSeries.map(function (d) { return d.sessions || 0; }),
+-            backgroundColor: hexToRgba(color, 0.35)
+-          }
++          { label: 'Público',  data: pubSeries.map(function(d){return d.sessions||0;}),  backgroundColor: hexToRgba(color, 0.85) },
++          { label: 'Privado',  data: privSeries.map(function(d){return d.sessions||0;}), backgroundColor: hexToRgba(color, 0.35) }
+         ]
+       },
+       options: {
+-        responsive: true,
+-        maintainAspectRatio: false,
++        responsive: true, maintainAspectRatio: false,
+         legend: { display: true, position: 'top', labels: { fontSize: 11 } },
+-        tooltips: {
+-          enabled: true,
+-          mode: 'index',
+-          intersect: false,
+-          backgroundColor: 'rgba(0,0,0,0.75)',
+-          titleFontColor: '#ffffff',
+-          bodyFontColor: '#ffffff',
+-          bodyFontSize: 13,
+-          cornerRadius: 4,
+-          xPadding: 10,
+-          yPadding: 8,
++        tooltips: Object.assign({}, TOOLTIP_DEFAULTS, {
++          mode: 'index', intersect: false, displayColors: true,
+           callbacks: {
+-            label: function (tooltipItem, data) {
+-              var label = data.datasets[tooltipItem.datasetIndex].label || '';
+-              return label + ': ' + Math.round(tooltipItem.yLabel).toLocaleString('es-PE');
++            title: function (items) { return items[0] ? items[0].xLabel : ''; },
++            label: function (item, d) {
++              return (d.datasets[item.datasetIndex].label || '') + ': ' +
++                     Math.round(item.yLabel).toLocaleString('es-PE');
+             }
+           }
+-        },
++        }),
+         hover: { mode: 'index', intersect: false },
+         scales: {
+           xAxes: [{ stacked: true, gridLines: { display: false }, ticks: { fontSize: 11 } }],
+           yAxes: [{ stacked: true, ticks: {
+-            beginAtZero: true,
+-            fontSize: 11,
+-            stepSize: smartStep(pubSeries.map(function(d){ return d.sessions||0; }).concat(privSeries.map(function(d){ return d.sessions||0; }))),
+-            callback: function (value) {
+-              if (value % 1 !== 0) return '';
+-              if (value >= 1000) return (value / 1000).toFixed(1) + 'k';
+-              return value;
+-            }
++            beginAtZero: true, fontSize: 11,
++            stepSize: smartStep(pubSeries.map(function(d){return d.sessions||0;}).concat(privSeries.map(function(d){return d.sessions||0;}))),
++            callback: function (v) { return v % 1 !== 0 ? '' : v >= 1000 ? (v/1000).toFixed(1)+'k' : v; }
+           }}]
+         }
+       }
+@@ -611,22 +662,17 @@ function renderTable(rows) {
+   if (!tbody) return;
+ 
+   if (!rows || rows.length === 0) {
+-    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted p-a">Sin datos para el período seleccionado.</td></tr>';
++    renderEmptyState('section-table', 'ion-ios-list-outline',
++      'Sin datos diarios', 'No hay registros para el período seleccionado');
+     return;
+   }
+ 
+   var html = '';
+   rows.forEach(function (row) {
+-    var dateStr = row.date ? row.date.replace(/-/g, '/') : '—';
+-    // Formato dd/mm/yyyy
+-    var parts = row.date ? row.date.split('-') : [];
+-    if (parts.length === 3) dateStr = parts[2] + '/' + parts[1] + '/' + parts[0];
+-
++    var parts = row.date ? String(row.date).split('-') : [];
++    var dateStr = parts.length === 3 ? parts[2] + '/' + parts[1] + '/' + parts[0] : (row.date || '—');
+     var avgMin = row.avg_minutes || 0;
+-    var timeStr = avgMin < 60
+-      ? Math.round(avgMin) + ' min'
+-      : Math.floor(avgMin / 60) + 'h ' + Math.round(avgMin % 60) + 'min';
+-
++    var timeStr = avgMin < 60 ? Math.round(avgMin) + ' min' : Math.floor(avgMin/60) + 'h ' + Math.round(avgMin%60) + 'min';
+     html += '<tr>' +
+       '<td>' + dateStr + '</td>' +
+       '<td>' + (row.sessions || 0).toLocaleString('es-PE') + '</td>' +
+@@ -637,7 +683,6 @@ function renderTable(rows) {
+       '<td>' + (row.private_sessions || 0).toLocaleString('es-PE') + '</td>' +
+       '</tr>';
+   });
+-
+   tbody.innerHTML = html;
+ }
+ 
+@@ -646,56 +691,37 @@ function renderTable(rows) {
+ function renderScriptStatus(health, lastEventAt) {
+   var el = document.getElementById('script-status');
+   if (!el) return;
+-
+   var configs = {
+-    ok:      { color: '#22c55e', icon: 'ion-ios-checkmark-circle', label: 'Script activo',        bg: 'rgba(34,197,94,0.15)'  },
+-    warning: { color: '#f59e0b', icon: 'ion-ios-alert',            label: 'Sin datos recientes',   bg: 'rgba(245,158,11,0.15)' },
+-    offline: { color: '#ef4444', icon: 'ion-ios-close-circle',     label: 'Script desconectado',   bg: 'rgba(239,68,68,0.15)'  }
++    ok:      { color: '#22c55e', icon: 'ion-ios-checkmark-circle', label: 'Script activo',      bg: 'rgba(34,197,94,0.15)'  },
++    warning: { color: '#f59e0b', icon: 'ion-ios-alert',            label: 'Sin datos recientes', bg: 'rgba(245,158,11,0.15)' },
++    offline: { color: '#ef4444', icon: 'ion-ios-close-circle',     label: 'Script desconectado', bg: 'rgba(239,68,68,0.15)'  }
+   };
+   var cfg = configs[health] || configs.offline;
+-
+   var timeAgo = 'nunca conectado';
+   if (lastEventAt) {
+     var diff = Math.floor((Date.now() - new Date(lastEventAt)) / 60000);
+-    if (diff < 60)   timeAgo = 'hace ' + diff + ' min';
+-    else if (diff < 1440) timeAgo = 'hace ' + Math.floor(diff / 60) + 'h';
+-    else              timeAgo = 'hace ' + Math.floor(diff / 1440) + 'd';
++    timeAgo = diff < 60 ? 'hace ' + diff + ' min' : diff < 1440 ? 'hace ' + Math.floor(diff/60) + 'h' : 'hace ' + Math.floor(diff/1440) + 'd';
+   }
+-
+   el.innerHTML =
+     '<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:99px;' +
+     'background:' + cfg.bg + ';border:1px solid ' + cfg.color + '33;font-size:11px;font-weight:500;' +
+     'color:' + cfg.color + ';cursor:default;" title="Último dato recibido: ' + timeAgo + '">' +
+-    '<i class="' + cfg.icon + '" style="font-size:13px;"></i>' +
+-    cfg.label +
+-    '<span style="opacity:0.7;font-weight:400;">(' + timeAgo + ')</span>' +
+-    '</span>';
++    '<i class="' + cfg.icon + '" style="font-size:13px;"></i>' + cfg.label +
++    '<span style="opacity:0.7;font-weight:400;">(' + timeAgo + ')</span></span>';
+ }
+ 
+ // ─── ANIMACIÓN DE CONTADOR ────────────────────────────────────────────────
+ 
++function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
++
+ function animateCounter(element, targetValue, duration, formatter) {
++  if (targetValue === 0) { element.textContent = formatter(0); return; }
+   var startTime = null;
+   function update(currentTime) {
+     if (!startTime) startTime = currentTime;
+-    var elapsed = currentTime - startTime;
+-    var progress = Math.min(elapsed / duration, 1);
+-    var eased = 1 - Math.pow(1 - progress, 3);
+-    var current = Math.round(targetValue * eased);
+-    element.textContent = formatter(current);
++    var progress = Math.min((currentTime - startTime) / duration, 1);
++    element.textContent = formatter(Math.round(targetValue * easeOutCubic(progress)));
+     if (progress < 1) requestAnimationFrame(update);
+   }
+   requestAnimationFrame(update);
+ }
+-
+-// ─── ESTADOS VACÍOS ───────────────────────────────────────────────────────
+-
+-function renderEmptyState(containerId, message) {
+-  var el = document.getElementById(containerId);
+-  if (!el) return;
+-  el.innerHTML =
+-    '<div style="text-align:center;padding:48px 24px;color:var(--text-muted,#94a3b8);width:100%;">' +
+-    '<i class="ion-ios-analytics-outline" style="font-size:48px;opacity:0.3;display:block;margin-bottom:12px;"></i>' +
+-    '<p style="font-size:14px;margin:0;">' + message + '</p>' +
+-    '</div>';
+-}
+-- 
+2.34.1
+

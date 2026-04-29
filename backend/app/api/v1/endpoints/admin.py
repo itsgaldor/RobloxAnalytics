@@ -17,13 +17,13 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from fastapi import Request, APIRouter, Depends, HTTPException
+from fastapi import Request, APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_db, require_admin_auth
-from app.models.models import Brand
+from app.models.models import Brand, Session as SessionModel
 from app.services.metrics import get_combined_aggregate, _get_date_range
 
 router = APIRouter(dependencies=[Depends(require_admin_auth)])
@@ -470,5 +470,87 @@ async def get_script(
             "generated_at": datetime.now(timezone.utc).isoformat(),
         },
         "meta": {},
+        "error": None,
+    }
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# LOGS DE EVENTOS
+# ──────────────────────────────────────────────────────────────────────────────
+
+@router.get(
+    "/brands/{brand_slug}/events",
+    summary="Logs de eventos de una marca",
+    description=(
+        "Devuelve los últimos eventos recibidos para una marca. "
+        "NO incluye user_id_hash — solo datos de sesión. "
+        "Ordenados por joined_at DESC."
+    ),
+)
+async def get_brand_events(
+    brand_slug: str,
+    limit: int = Query(50, ge=1, le=200, description="Máx 200 eventos"),
+    event_type: Optional[str] = Query(None, description="Filtrar: join | leave | heartbeat"),
+    db: AsyncSession = Depends(get_db),
+):
+    from sqlalchemy import select, and_
+
+    result = await db.execute(select(Brand).where(Brand.slug == brand_slug))
+    brand = result.scalar_one_or_none()
+    if brand is None:
+        raise HTTPException(
+            status_code=404,
+            detail={"data": None, "meta": {}, "error": f"Marca '{brand_slug}' no encontrada."},
+        )
+
+    q = (
+        select(SessionModel)
+        .where(SessionModel.brand_id == brand.id)
+        .order_by(SessionModel.joined_at.desc())
+        .limit(limit)
+    )
+    if event_type and event_type in ("join", "leave", "heartbeat"):
+        # Inferimos el tipo desde el estado de la sesión:
+        # join  → cualquier sesión (todas empiezan con join)
+        # leave → sesión cerrada (left_at IS NOT NULL)
+        # heartbeat → sesión activa con heartbeat reciente
+        if event_type == "leave":
+            q = q.where(SessionModel.left_at.is_not(None))
+        elif event_type == "heartbeat":
+            from datetime import timedelta
+            cutoff = datetime.now(timezone.utc) - timedelta(minutes=2)
+            q = q.where(
+                SessionModel.left_at.is_(None),
+                SessionModel.last_heartbeat >= cutoff,
+            )
+
+    sessions = (await db.execute(q)).scalars().all()
+
+    events = []
+    for s in sessions:
+        is_active = s.left_at is None
+        # Inferir event_type desde el estado
+        if not is_active:
+            ev_type = "leave"
+        elif (datetime.now(timezone.utc) - s.last_heartbeat).total_seconds() < 120:
+            ev_type = "heartbeat"
+        else:
+            ev_type = "join"
+
+        events.append({
+            "id": str(s.id),
+            "session_id": s.session_id,
+            "event_type": ev_type,
+            "server_type": s.server_type,
+            "joined_at": s.joined_at.isoformat() if s.joined_at else None,
+            "last_heartbeat": s.last_heartbeat.isoformat() if s.last_heartbeat else None,
+            "left_at": s.left_at.isoformat() if s.left_at else None,
+            "duration_seconds": s.duration_seconds,
+            "is_active": is_active,
+        })
+
+    return {
+        "data": events,
+        "meta": {"total": len(events), "brand": brand_slug, "limit": limit},
         "error": None,
     }

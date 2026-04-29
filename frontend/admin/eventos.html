@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Eventos — PCA Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <link rel="shortcut icon" href="/dashboard/images/logo.png">
+  <link rel="stylesheet" href="/dashboard/css/animate.css/animate.min.css" />
+  <link rel="stylesheet" href="/dashboard/css/glyphicons/glyphicons.css" />
+  <link rel="stylesheet" href="/dashboard/css/font-awesome/css/font-awesome.min.css" />
+  <link rel="stylesheet" href="/dashboard/css/ionicons/css/ionicons.min.css" />
+  <link rel="stylesheet" href="/dashboard/css/bootstrap/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="/dashboard/css/styles/app.css" />
+  <link rel="stylesheet" href="/dashboard/css/styles/style.css" />
+  <link rel="stylesheet" href="/dashboard/css/styles/font.css" />
+  <link rel="stylesheet" href="/dashboard/css/pca.css" />
+  <link rel="stylesheet" href="/admin/css/admin.css" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%232d3e50'/><text y='.9em' font-size='70' x='15'>📊</text></svg>">
+  <meta name="theme-color" content="#2d3e50">
+  <style>
+    .pca-stat-card {
+      text-align: center;
+      padding: 20px 12px;
+    }
+    .pca-stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      line-height: 1.1;
+      display: block;
+    }
+    .pca-stat-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      opacity: 0.65;
+      display: block;
+      margin-top: 4px;
+    }
+    @keyframes pca-spin { to { transform: rotate(360deg); } }
+    .pca-spin { display: inline-block; animation: pca-spin 0.8s linear infinite; }
+    #table-events th { white-space: nowrap; font-size: 12px; }
+    #table-events td { vertical-align: middle; font-size: 13px; }
+    .btn-theme-active {
+      background-color: var(--brand-primary, #2d3e50) !important;
+      color: #fff !important;
+      border-color: var(--brand-primary, #2d3e50) !important;
+    }
+  </style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- SIDEBAR -->
+  <div id="aside" class="app-aside fade nav-dropdown black">
+    <div class="navside dk pca-admin-sidebar" data-layout="column">
+      <div class="navbar no-radius pca-admin-navbar">
+        <a href="/admin/" class="navbar-brand">
+          <i class="ion-ios-settings" style="font-size:1.4rem; margin-right:8px;"></i>
+          <span class="_600">PCA Admin</span>
+        </a>
+      </div>
+      <div data-flex class="hide-scroll">
+        <nav class="scroll nav-stacked nav-stacked-rounded nav-color">
+          <ul class="nav" data-ui-nav>
+            <li class="nav-header hidden-folded"><span class="text-xs">Administracion</span></li>
+            <li><a href="/admin/"><span class="nav-icon"><i class="ion-ios-speedometer"></i></span><span class="nav-text">Resumen global</span></a></li>
+            <li><a href="/admin/marcas.html"><span class="nav-icon"><i class="ion-ios-people"></i></span><span class="nav-text">Marcas</span></a></li>
+            <li><a href="/admin/script-generator.html"><span class="nav-icon"><i class="ion-code"></i></span><span class="nav-text">Generador Script</span></a></li>
+            <li><a href="/admin/reportes.html"><span class="nav-icon"><i class="ion-ios-paper"></i></span><span class="nav-text">Reportes</span></a></li>
+            <li class="active"><a href="/admin/eventos.html"><span class="nav-icon"><i class="ion-ios-pulse"></i></span><span class="nav-text">Eventos</span></a></li>
+            <li class="nav-item">
+              <form method="POST" action="/api/v1/auth/logout" style="display:inline;">
+                <button type="submit" class="btn btn-sm white b-a m-x-xs" title="Cerrar sesion">
+                  <i class="ion-log-out"></i>
+                  <span class="hidden-xs"> Salir</span>
+                </button>
+              </form>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+  </div>
+  <!-- / SIDEBAR -->
+
+  <!-- CONTENT -->
+  <div id="content" class="app-content" role="main">
+
+    <!-- HEADER -->
+    <div class="app-header white bg b-b">
+      <div class="navbar">
+        <a data-toggle="modal" data-target="#aside" class="navbar-item pull-left hidden-lg-up p-r m-a-0">
+          <i class="ion-navicon"></i>
+        </a>
+        <div class="navbar-item pull-left">
+          <a href="/admin/" class="text-muted">Admin</a>
+          <span class="text-muted m-x-xs">/</span>
+          <span class="_500">Eventos</span>
+          <span id="badge-active" class="label label-success m-l-xs" style="display:none;font-size:10px;vertical-align:middle;"></span>
+        </div>
+        <ul class="nav navbar-nav pull-right">
+
+          <!-- Última actualización -->
+          <li class="nav-item hidden-xs-down">
+            <span id="last-updated" class="nav-item text-muted" style="font-size:12px;"></span>
+          </li>
+
+          <!-- Filtros de tipo de evento -->
+          <li class="nav-item">
+            <div class="btn-group btn-group-sm" role="group" style="margin:0 4px;">
+              <button class="btn white b-a btn-theme-active" data-event-type="all">Todos</button>
+              <button class="btn white b-a" data-event-type="join">Join</button>
+              <button class="btn white b-a" data-event-type="heartbeat">Heartbeat</button>
+              <button class="btn white b-a" data-event-type="leave">Leave</button>
+            </div>
+          </li>
+
+          <!-- Toggle auto-refresh -->
+          <li class="nav-item">
+            <button id="btn-autorefresh" class="btn btn-sm white b-a m-x-xs btn-theme-active"
+                    title="Auto-refresh ON (cada 10s) — click para pausar">
+              <i class="ion-android-sync"></i>
+              <span class="hidden-xs" style="font-size:11px;"> Live</span>
+            </button>
+          </li>
+
+          <!-- Refresh manual -->
+          <li class="nav-item">
+            <button id="btn-refresh" class="btn btn-sm white b-a m-x-xs" title="Actualizar ahora">
+              <i class="ion-android-sync"></i>
+            </button>
+          </li>
+
+        </ul>
+      </div>
+    </div>
+    <!-- / HEADER -->
+
+    <!-- BODY -->
+    <div class="app-body">
+      <div class="padding">
+
+        <!-- Error -->
+        <div id="section-error" class="alert alert-danger m-b" style="display:none;">
+          <i class="ion-alert-circled"></i> <span id="error-message"></span>
+        </div>
+
+        <!-- Selector de marca -->
+        <div class="box m-b">
+          <div class="box-header b-b">
+            <h3>Logs de eventos en tiempo real</h3>
+            <small class="text-muted">Selecciona una marca para ver sus eventos de sesión</small>
+          </div>
+          <div class="box-body p-a">
+            <div class="form-group m-b-0">
+              <label class="_500 m-b-xs">Marca</label>
+              <select id="select-brand" class="form-control" style="max-width:320px;">
+                <option value="">— Seleccionar marca —</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sección eventos (oculta hasta seleccionar marca) -->
+        <div id="section-events" style="display:none;">
+
+          <!-- Stats -->
+          <div class="row no-gutter b-b m-b">
+            <div class="col-xs-4">
+              <div class="box pca-stat-card">
+                <span id="stat-active" class="pca-stat-value text-success">—</span>
+                <span class="pca-stat-label">Sesiones activas</span>
+              </div>
+            </div>
+            <div class="col-xs-4">
+              <div class="box pca-stat-card" style="border-left:1px solid #e2e8f0;">
+                <span id="stat-hour" class="pca-stat-value">—</span>
+                <span class="pca-stat-label">Eventos última hora</span>
+              </div>
+            </div>
+            <div class="col-xs-4">
+              <div class="box pca-stat-card" style="border-left:1px solid #e2e8f0;">
+                <span id="stat-frequent" class="pca-stat-value text-info">—</span>
+                <span class="pca-stat-label">Tipo más frecuente</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabla de eventos -->
+          <div class="box">
+            <div class="box-header b-b">
+              <h3>Eventos recientes</h3>
+              <small class="text-muted">Últimos 200 eventos ordenados por inicio de sesión (más recientes primero)</small>
+            </div>
+            <div class="table-responsive">
+              <table id="table-events" class="table table-striped b-t m-b-0">
+                <thead>
+                  <tr>
+                    <th>Tipo</th>
+                    <th>Session ID</th>
+                    <th>Servidor</th>
+                    <th>Inicio</th>
+                    <th>Último heartbeat</th>
+                    <th>Duración</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td colspan="7" class="text-center text-muted p-a-lg">
+                      <i class="ion-ios-pulse" style="font-size:2rem;display:block;margin-bottom:8px;opacity:0.4;"></i>
+                      Selecciona una marca para ver los eventos
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+        <!-- / section-events -->
+
+      </div>
+    </div>
+    <!-- / BODY -->
+
+    <!-- FOOTER -->
+    <div class="app-footer white bg p-a b-t">
+      <div class="pull-right text-sm text-muted">Peru City Analytics v0.2.0</div>
+      <span class="text-sm text-muted">&copy; 2026 — Peru City Analytics</span>
+    </div>
+    <!-- / FOOTER -->
+
+  </div>
+  <!-- / CONTENT -->
+
+</div><!-- / #app -->
+
+<!-- Scripts plantilla Aside -->
+<script src="/dashboard/libs/jquery/dist/jquery.js"></script>
+<script src="/dashboard/libs/tether/dist/js/tether.min.js"></script>
+<script src="/dashboard/libs/bootstrap/dist/js/bootstrap.js"></script>
+<script src="/dashboard/libs/jQuery-Storage-API/jquery.storageapi.min.js"></script>
+<script src="/dashboard/libs/PACE/pace.min.js"></script>
+<script src="/dashboard/scripts/app.js"></script>
+<script src="/dashboard/scripts/ui-load.js"></script>
+<script src="/dashboard/scripts/ui-jp.js"></script>
+<script src="/dashboard/scripts/ajax.js"></script>
+<script src="/dashboard/scripts/ui-nav.js"></script>
+
+<!-- Config + página -->
+<script src="/dashboard/js/config.js"></script>
+<script src="/admin/js/pages/eventos.js"></script>
+</body>
+</html>
