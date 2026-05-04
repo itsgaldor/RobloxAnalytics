@@ -88,4 +88,4 @@ def require_admin_auth(request: "Request"):
     from app.api.v1.endpoints.auth import verify_session_token
     token = request.cookies.get("pca_admin_session", "")
     if not verify_session_token(token):
-        raise HTTPException(status_code=401, detail="No autorizado"
+        raise HTTPException(status_code=401, detail="No autorizado")
