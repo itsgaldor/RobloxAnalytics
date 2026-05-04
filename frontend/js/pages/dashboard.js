@@ -295,9 +295,41 @@ function initMetricButtons() {
   });
 }
 
+var METRIC_TITLES = {
+  sessions:    'Sesiones por día',
+  dau:         'Usuarios activos por día (DAU)',
+  avg_minutes: 'Tiempo promedio de sesión (min)',
+  total_hours: 'Horas totales de juego'
+};
+var METRIC_SUBTITLES = {
+  sessions:    'Total de sesiones (público + privado)',
+  dau:         'Usuarios únicos por día',
+  avg_minutes: 'Promedio en minutos por sesión',
+  total_hours: 'Horas acumuladas de juego'
+};
+
+function getYAxisConfig(metric) {
+  if (metric === 'avg_minutes') {
+    return { beginAtZero: true, stepSize: 5, suggestedMax: 60, fontSize: 11,
+      callback: function (v) { return v % 5 === 0 ? v + ' min' : ''; } };
+  }
+  if (metric === 'total_hours') {
+    return { beginAtZero: true, fontSize: 11,
+      callback: function (v) { return v % 1 === 0 ? v + 'h' : ''; } };
+  }
+  return { beginAtZero: true, fontSize: 11,
+    callback: function (v) { if (v % 1 !== 0) return ''; return v >= 1000 ? (v/1000).toFixed(1) + 'k' : v; } };
+}
+
 function updateLineChart(metric) {
   currentMetric = metric;
   if (!mainChart) return;
+
+  // BUG 2: update chart title and subtitle
+  var titleEl    = document.getElementById('chart-main-title');
+  var subtitleEl = document.getElementById('chart-main-subtitle');
+  if (titleEl)    titleEl.textContent    = METRIC_TITLES[metric]    || 'Evolución diaria';
+  if (subtitleEl) subtitleEl.textContent = METRIC_SUBTITLES[metric] || '';
 
   var pubSeries  = currentPubSeries;
   var privSeries = currentPrivSeries;
@@ -315,8 +347,21 @@ function updateLineChart(metric) {
              ((privSeries[i] && privSeries[i].dau) || 0);
     });
   } else if (metric === 'avg_minutes') {
+    // BUG 3: avg_minutes comes in minutes from backend; ensure correct scale
     newData = baseSeries.map(function (d, i) {
-      return (pubSeries[i] && pubSeries[i].avg_minutes) || 0;
+      var val = (pubSeries[i] && pubSeries[i].avg_minutes) || 0;
+      // Auto-detect if accidentally in seconds (>100 min avg session is unusual)
+      return val > 100 ? Math.round(val / 60) : val;
+    });
+  } else if (metric === 'total_hours') {
+    // BUG 4: total_hours tab
+    newData = baseSeries.map(function (d, i) {
+      return ((pubSeries[i]  && pubSeries[i].avg_minutes !== undefined)
+        ? (((pubSeries[i].sessions || 0) * (pubSeries[i].avg_minutes || 0)) / 60)
+        : 0) +
+        ((privSeries[i] && privSeries[i].avg_minutes !== undefined)
+        ? (((privSeries[i].sessions || 0) * (privSeries[i].avg_minutes || 0)) / 60)
+        : 0);
     });
   } else {
     return;
@@ -331,6 +376,9 @@ function updateLineChart(metric) {
     });
   }
 
+  // BUG 3: update Y-axis config dynamically
+  mainChart.options.scales.yAxes[0].ticks = getYAxisConfig(metric);
+
   mainChart.update();
 
   document.querySelectorAll('[data-metric]').forEach(function (btn) {
@@ -339,7 +387,7 @@ function updateLineChart(metric) {
 }
 
 function getLabelForMetric(metric) {
-  var map = { sessions: 'Sesiones', dau: 'DAU', avg_minutes: 'Tiempo prom. (min)' };
+  var map = { sessions: 'Sesiones', dau: 'DAU', avg_minutes: 'Tiempo prom. (min)', total_hours: 'Horas totales' };
   return map[metric] || metric;
 }
 

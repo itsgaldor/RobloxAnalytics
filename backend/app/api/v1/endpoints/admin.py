@@ -294,8 +294,14 @@ def _generate_lua_script(brand: Brand, api_url: str) -> str:
     summary="Listar todas las marcas",
     description="Devuelve todas las marcas (activas e inactivas) con métricas de la última semana y health status.",
 )
-async def list_brands(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Brand).order_by(Brand.created_at.desc()))
+async def list_brands(
+    include_inactive: bool = Query(False, description="Incluir marcas inactivas"),
+    db: AsyncSession = Depends(get_db),
+):
+    q = select(Brand).order_by(Brand.created_at.desc())
+    if not include_inactive:
+        q = q.where(Brand.active == True)
+    result = await db.execute(q)
     brands = result.scalars().all()
 
     data = []

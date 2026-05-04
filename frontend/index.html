@@ -191,13 +191,14 @@
             <div class="box">
               <div class="box-header b-b chart-header-flex">
                 <div>
-                  <h3>Sesiones por día</h3>
-                  <small class="text-muted">Total de sesiones (público + privado)</small>
+                  <h3 id="chart-main-title">Sesiones por día</h3>
+                  <small id="chart-main-subtitle" class="text-muted">Total de sesiones (público + privado)</small>
                 </div>
                 <div class="btn-group btn-group-sm btn-group-metric" role="group" aria-label="Métrica del gráfico">
                   <button class="btn btn-sm white b-a active-metric" data-metric="sessions">Sesiones</button>
                   <button class="btn btn-sm white b-a" data-metric="dau">DAU</button>
                   <button class="btn btn-sm white b-a" data-metric="avg_minutes">Tiempo</button>
+                  <button class="btn btn-sm white b-a" data-metric="total_hours">Horas</button>
                 </div>
               </div>
               <div class="box-body p-a">
@@ -227,71 +228,4 @@
           <div class="box">
             <div class="box-header b-b">
               <h3>Datos diarios</h3>
-              <small class="text-muted">Desglose por día del período seleccionado</small>
-            </div>
-            <div class="table-responsive">
-              <table id="table-daily" class="table table-striped b-t b-b m-b-0">
-                <thead>
-                  <tr>
-                    <th>Fecha</th>
-                    <th>Sesiones</th>
-                    <th>Usuarios únicos</th>
-                    <th>Tiempo promedio</th>
-                    <th>Horas totales</th>
-                    <th>Público</th>
-                    <th>Privado</th>
-                  </tr>
-                </thead>
-                <tbody></tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </div>
-    <!-- / BODY -->
-
-    <!-- FOOTER -->
-    <div class="app-footer white bg p-a b-t">
-      <div class="pull-right text-sm text-muted">Peru City Analytics v0.2.0</div>
-      <span class="text-sm text-muted">&copy; 2026 — Peru City Analytics</span>
-    </div>
-    <!-- / FOOTER -->
-
-  </div>
-  <!-- / CONTENT -->
-
-<!-- ===== LAYOUT END ===== -->
-
-</div><!-- / #app -->
-
-<!-- ===== SCRIPTS — orden exacto, rutas absolutas ===== -->
-
-<!-- Plantilla Aside — jQuery y librerías base -->
-<script src="/dashboard/libs/jquery/dist/jquery.js"></script>
-<script src="/dashboard/libs/tether/dist/js/tether.min.js"></script>
-<script src="/dashboard/libs/bootstrap/dist/js/bootstrap.js"></script>
-<script src="/dashboard/libs/jQuery-Storage-API/jquery.storageapi.min.js"></script>
-<script src="/dashboard/libs/PACE/pace.min.js"></script>
-
-<!-- Chart.js v2.2.1 — bundle incluye moment.js -->
-<script src="/dashboard/libs/chart.js/dist/Chart.bundle.min.js"></script>
-
-<!-- Scripts de comportamiento de la plantilla Aside -->
-<script src="/dashboard/scripts/app.js"></script>
-<script src="/dashboard/scripts/ui-load.js"></script>
-<script src="/dashboard/scripts/ui-jp.js"></script>
-<!-- Scripts adicionales de la plantilla Aside -->
-<script src="/dashboard/scripts/ajax.js"></script>
-<script src="/dashboard/scripts/ui-nav.js"></script>
-
-<!-- Configuración y lógica custom de Peru City Analytics -->
-<script src="/dashboard/js/config.js"></script>
-<script src="/dashboard/js/api.js"></script>
-<script src="/dashboard/js/theme.js"></script>
-<script src="/dashboard/js/whitelabel.js"></script>
-<script src="/dashboard/js/pages/dashboard.js"></script>
-
-</body>
-</html>
+              <small class="text-muted">Desglose por d�

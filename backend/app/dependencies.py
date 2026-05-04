@@ -33,7 +33,9 @@ async def get_brand(
     Dependencia que obtiene la marca por slug.
     Devuelve 404 si no existe.
     """
-    result = await db.execute(select(Brand).where(Brand.slug == brand_slug))
+    result = await db.execute(
+        select(Brand).where(Brand.slug == brand_slug, Brand.active == True)
+    )
     brand = result.scalar_one_or_none()
     if brand is None:
         raise HTTPException(
@@ -56,7 +58,9 @@ async def get_brand_with_auth(
     Dependencia que valida brand_slug + api_token.
     Devuelve 404 si el slug no existe, 401 si el token no corresponde.
     """
-    result = await db.execute(select(Brand).where(Brand.slug == brand_slug))
+    result = await db.execute(
+        select(Brand).where(Brand.slug == brand_slug, Brand.active == True)
+    )
     brand = result.scalar_one_or_none()
     if brand is None:
         raise HTTPException(
