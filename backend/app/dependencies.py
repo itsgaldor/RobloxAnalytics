@@ -34,7 +34,7 @@ async def get_brand(
     Devuelve 404 si no existe.
     """
     result = await db.execute(
-        select(Brand).where(Brand.slug == brand_slug, Brand.active == True)
+        select(Brand).where(Brand.slug == brand_slug, Brand.active != False)
     )
     brand = result.scalar_one_or_none()
     if brand is None:
@@ -59,7 +59,7 @@ async def get_brand_with_auth(
     Devuelve 404 si el slug no existe, 401 si el token no corresponde.
     """
     result = await db.execute(
-        select(Brand).where(Brand.slug == brand_slug, Brand.active == True)
+        select(Brand).where(Brand.slug == brand_slug, Brand.active != False)
     )
     brand = result.scalar_one_or_none()
     if brand is None:
@@ -88,4 +88,4 @@ def require_admin_auth(request: "Request"):
     from app.api.v1.endpoints.auth import verify_session_token
     token = request.cookies.get("pca_admin_session", "")
     if not verify_session_token(token):
-        raise HTTPException(status_code=401, detail="No autorizado")
+        raise HTTPException(status_code=401, detail="No autorizado"
