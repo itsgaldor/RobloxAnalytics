@@ -19,6 +19,7 @@
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%232d3e50'/><text y='.9em' font-size='70' x='15'>📊</text></svg>">
   <meta name="theme-color" content="#2d3e50">
+  <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
 </head>
 <body>
 <div class="app" id="app">
@@ -28,7 +29,7 @@
     <div class="navside dk pca-admin-sidebar" data-layout="column">
       <div class="navbar no-radius pca-admin-navbar">
         <a href="/admin/" class="navbar-brand">
-          <i class="ion-ios-settings" style="font-size:1.4rem; margin-right:8px;"></i>
+          <i class="ph ph-gear" style="font-size:1.4rem; margin-right:8px;"></i>
           <span class="_600">PCA Admin</span>
         </a>
       </div>
@@ -36,11 +37,11 @@
         <nav class="scroll nav-stacked nav-stacked-rounded nav-color">
           <ul class="nav" data-ui-nav>
             <li class="nav-header hidden-folded"><span class="text-xs">Administracion</span></li>
-            <li><a href="/admin/"><span class="nav-icon"><i class="ion-ios-pulse"></i></span><span class="nav-text">Resumen global</span></a></li>
-            <li><a href="/admin/marcas.html"><span class="nav-icon"><i class="ion-ios-people"></i></span><span class="nav-text">Marcas</span></a></li>
-            <li><a href="/admin/script-generator.html"><span class="nav-icon"><i class="ion-code"></i></span><span class="nav-text">Generador Script</span></a></li>
-            <li class="active"><a href="/admin/reportes.html"><span class="nav-icon"><i class="ion-ios-paper"></i></span><span class="nav-text">Reportes</span></a></li>
-            <li><a href="/admin/eventos.html"><span class="nav-icon"><i class="ion-ios-pulse"></i></span><span class="nav-text">Eventos</span></a></li>
+            <li><a href="/admin/"><span class="nav-icon"><i class="ph ph-activity"></i></span><span class="nav-text">Resumen global</span></a></li>
+            <li><a href="/admin/marcas.html"><span class="nav-icon"><i class="ph ph-users"></i></span><span class="nav-text">Marcas</span></a></li>
+            <li><a href="/admin/script-generator.html"><span class="nav-icon"><i class="ph ph-code"></i></span><span class="nav-text">Generador Script</span></a></li>
+            <li class="active"><a href="/admin/reportes.html"><span class="nav-icon"><i class="ph ph-file-text"></i></span><span class="nav-text">Reportes</span></a></li>
+            <li><a href="/admin/eventos.html"><span class="nav-icon"><i class="ph ph-activity"></i></span><span class="nav-text">Eventos</span></a></li>
         </ul>
         </nav>
       </div>
@@ -53,7 +54,7 @@
             display:flex;align-items:center;gap:8px;
           " onmouseover="this.style.background='rgba(255,255,255,0.15)'"
              onmouseout="this.style.background='rgba(255,255,255,0.08)'">
-            <i class="ion-log-out" style="font-size:15px;"></i>
+            <i class="ph ph-sign-out" style="font-size:15px;"></i>
             <span>Salir</span>
           </button>
         </form>
@@ -69,7 +70,7 @@
     <div class="app-header white bg b-b">
       <div class="navbar">
         <a data-toggle="modal" data-target="#aside" class="navbar-item pull-left hidden-lg-up p-r m-a-0">
-          <i class="ion-navicon"></i>
+          <i class="ph ph-list"></i>
         </a>
         <div class="navbar-item pull-left">
           <a href="/admin/" class="text-muted">Admin</a>
@@ -85,10 +86,10 @@
       <div class="padding">
 
         <div id="section-error" class="alert alert-danger m-b" style="display:none;">
-          <i class="ion-alert-circled"></i> <span id="error-message"></span>
+          <i class="ph ph-warning-circle"></i> <span id="error-message"></span>
         </div>
         <div id="section-success" class="alert alert-success m-b" style="display:none;">
-          <i class="ion-checkmark-circled"></i> <span id="success-message"></span>
+          <i class="ph ph-check-circled"></i> <span id="success-message"></span>
         </div>
 
         <!-- Selector de marca -->
@@ -212,7 +213,7 @@
 
                   <!-- Badge informativo -->
                   <div class="text-muted" style="font-size:0.82rem;">
-                    <i class="ion-information-circled"></i>
+                    <i class="ph ph-info"></i>
                     El analisis de IA puede tomar 10-20 segundos adicionales.
                   </div>
 
@@ -221,7 +222,7 @@
 
               <!-- Spinner de progreso -->
               <div id="section-spinner" class="box p-a text-center m-b" style="display:none;">
-                <i class="ion-android-sync fa-spin" style="font-size:1.8rem; color:#aaa;"></i>
+                <i class="ph ph-arrows-clockwise fa-spin" style="font-size:1.8rem; color:#aaa;"></i>
                 <p id="progress-text" class="text-muted m-t-sm m-b-0">Calculando metricas...</p>
               </div>
 
@@ -231,7 +232,7 @@
           <!-- Boton principal -->
           <div class="m-t">
             <button id="btn-generate" class="btn btn-primary btn-lg">
-              <i class="ion-ios-paper"></i> Generar reporte PDF
+              <i class="ph ph-file-text"></i> Generar reporte PDF
             </button>
           </div>
 

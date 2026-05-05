@@ -28,6 +28,7 @@
 
   <!-- CSS custom de Peru City Analytics -->
   <link rel="stylesheet" href="/dashboard/css/pca.css" />
+  <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
 </head>
 <body>
 <div class="app" id="app">
@@ -52,14 +53,14 @@
             </li>
             <li class="active">
               <a href="#">
-                <span class="nav-icon"><i class="ion-ios-analytics"></i></span>
+                <span class="nav-icon"><i class="ph ph-chart-line-up"></i></span>
                 <span class="nav-text">Dashboard</span>
               </a>
             </li>
             <li class="nav-divider"></li>
             <li>
               <a href="/admin/" title="Ir al backoffice">
-                <span class="nav-icon"><i class="ion-ios-settings"></i></span>
+                <span class="nav-icon"><i class="ph ph-gear"></i></span>
                 <span class="nav-text" style="font-size:11px;opacity:0.8;">Admin</span>
               </a>
             </li>
@@ -80,7 +81,7 @@
 
         <a data-toggle="modal" data-target="#aside"
            class="navbar-item pull-left hidden-lg-up p-r m-a-0">
-          <i class="ion-navicon"></i>
+          <i class="ph ph-list"></i>
         </a>
 
         <!-- Banner + nombre de la marca -->
@@ -114,7 +115,7 @@
               </div>
               <!-- Botón personalizado -->
               <button class="btn white b-a btn-sm" id="btn-range-custom" title="Rango personalizado" style="display:flex;align-items:center;gap:4px;">
-                <i class="ion-ios-calendar"></i>
+                <i class="ph ph-calendar"></i>
                 <span id="custom-range-label" class="hidden-xs" style="font-size:11px;">Personalizado</span>
               </button>
             </div>
@@ -146,21 +147,21 @@
           <!-- Botón Actualizar -->
           <li class="nav-item">
             <button id="btn-refresh" class="btn btn-sm white b-a m-x-xs" title="Actualizar datos">
-              <i class="ion-android-sync"></i>
+              <i class="ph ph-arrows-clockwise"></i>
             </button>
           </li>
 
           <!-- Botón Exportar CSV -->
           <li class="nav-item">
             <button id="btn-export" class="btn btn-sm white b-a m-x-xs" title="Exportar CSV">
-              <i class="ion-ios-download"></i> CSV
+              <i class="ph ph-download-simple"></i> CSV
             </button>
           </li>
 
           <!-- Toggle dark/light mode -->
           <li class="nav-item">
             <button id="btn-theme-toggle" class="btn btn-sm white b-a m-x-xs" title="Cambiar tema">
-              <i class="ion-ios-sunny"></i>
+              <i class="ph ph-sun"></i>
             </button>
           </li>
 
@@ -176,7 +177,7 @@
 
         <!-- Error global -->
         <div id="section-error" class="alert alert-danger hide m-b">
-          <i class="ion-alert-circled"></i>
+          <i class="ph ph-warning-circle"></i>
           <span id="error-message"></span>
         </div>
 

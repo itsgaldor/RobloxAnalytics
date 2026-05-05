@@ -19,6 +19,7 @@
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%232d3e50'/><text y='.9em' font-size='70' x='15'>📊</text></svg>">
   <meta name="theme-color" content="#2d3e50">
+  <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
 </head>
 <body>
 <div class="app" id="app">
@@ -28,7 +29,7 @@
     <div class="navside dk pca-admin-sidebar" data-layout="column">
       <div class="navbar no-radius pca-admin-navbar">
         <a href="/admin/" class="navbar-brand">
-          <i class="ion-ios-settings" style="font-size:1.4rem; margin-right:8px;"></i>
+          <i class="ph ph-gear" style="font-size:1.4rem; margin-right:8px;"></i>
           <span class="_600">PCA Admin</span>
         </a>
       </div>
@@ -36,11 +37,11 @@
         <nav class="scroll nav-stacked nav-stacked-rounded nav-color">
           <ul class="nav" data-ui-nav>
             <li class="nav-header hidden-folded"><span class="text-xs">Administración</span></li>
-            <li><a href="/admin/"><span class="nav-icon"><i class="ion-ios-pulse"></i></span><span class="nav-text">Resumen global</span></a></li>
-            <li class="active"><a href="/admin/marcas.html"><span class="nav-icon"><i class="ion-ios-people"></i></span><span class="nav-text">Marcas</span></a></li>
-            <li><a href="/admin/script-generator.html"><span class="nav-icon"><i class="ion-code"></i></span><span class="nav-text">Generador Script</span></a></li>
-            <li><a href="/admin/reportes.html"><span class="nav-icon"><i class="ion-ios-paper"></i></span><span class="nav-text">Reportes</span></a></li>
-            <li><a href="/admin/eventos.html"><span class="nav-icon"><i class="ion-ios-pulse"></i></span><span class="nav-text">Eventos</span></a></li>
+            <li><a href="/admin/"><span class="nav-icon"><i class="ph ph-activity"></i></span><span class="nav-text">Resumen global</span></a></li>
+            <li class="active"><a href="/admin/marcas.html"><span class="nav-icon"><i class="ph ph-users"></i></span><span class="nav-text">Marcas</span></a></li>
+            <li><a href="/admin/script-generator.html"><span class="nav-icon"><i class="ph ph-code"></i></span><span class="nav-text">Generador Script</span></a></li>
+            <li><a href="/admin/reportes.html"><span class="nav-icon"><i class="ph ph-file-text"></i></span><span class="nav-text">Reportes</span></a></li>
+            <li><a href="/admin/eventos.html"><span class="nav-icon"><i class="ph ph-activity"></i></span><span class="nav-text">Eventos</span></a></li>
         </ul>
         </nav>
       </div>
@@ -54,7 +55,7 @@
     <div class="app-header white bg b-b">
       <div class="navbar">
         <a data-toggle="modal" data-target="#aside" class="navbar-item pull-left hidden-lg-up p-r m-a-0">
-          <i class="ion-navicon"></i>
+          <i class="ph ph-list"></i>
         </a>
         <div class="navbar-item pull-left">
           <a href="/admin/" class="text-muted">Admin</a>
@@ -64,7 +65,7 @@
         <ul class="nav navbar-nav pull-right">
           <li class="nav-item">
             <a href="/admin/marca-detalle.html" class="btn btn-sm btn-primary m-x-xs">
-              <i class="ion-plus"></i> Nueva marca
+              <i class="ph ph-plus"></i> Nueva marca
             </a>
           </li>
         </ul>
@@ -76,10 +77,10 @@
       <div class="padding">
 
         <div id="section-error" class="alert alert-danger hide m-b">
-          <i class="ion-alert-circled"></i> <span id="error-message"></span>
+          <i class="ph ph-warning-circle"></i> <span id="error-message"></span>
         </div>
         <div id="section-success" class="alert alert-success hide m-b">
-          <i class="ion-checkmark-circled"></i> <span id="success-message"></span>
+          <i class="ph ph-check-circled"></i> <span id="success-message"></span>
         </div>
 
         <div class="box">
@@ -159,7 +160,7 @@
         width:52px; height:52px; background:#fee2e2; border-radius:50%;
         display:flex; align-items:center; justify-content:center; margin:0 auto 12px;
       ">
-        <i class="ion-trash-a" style="font-size:24px;color:#dc2626;"></i>
+        <i class="ph ph-trash" style="font-size:24px;color:#dc2626;"></i>
       </div>
       <h5 style="font-size:16px;font-weight:600;color:#1e293b;margin:0 0 8px;">
         Eliminar marca
@@ -172,7 +173,7 @@
       background:#fef9c3; border:1px solid #fde047; border-radius:8px;
       padding:12px 14px; margin-bottom:20px; font-size:12px; color:#854d0e;
     ">
-      <i class="ion-alert-circled"></i>
+      <i class="ph ph-warning-circle"></i>
       <strong>Atenci&oacute;n:</strong> Esta acci&oacute;n desactivar&aacute; el dashboard de la marca
       y el Script de Roblox dejar&aacute; de enviar datos. Los datos hist&oacute;ricos
       se conservan pero no ser&aacute;n accesibles desde el dashboard p&uacute;blico.
@@ -192,7 +193,7 @@
       </button>
       <button id="btn-confirm-delete" onclick="executeDelete()" disabled
         style="padding:8px 20px;border:none;border-radius:6px;background:#dc2626;color:#fff;font-size:13px;font-weight:500;cursor:pointer;opacity:0.4;">
-        <i class="ion-trash-a"></i> Eliminar marca
+        <i class="ph ph-trash"></i> Eliminar marca
       </button>
     </div>
   </div>

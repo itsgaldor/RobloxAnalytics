@@ -19,6 +19,7 @@
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%232d3e50'/><text y='.9em' font-size='70' x='15'>📊</text></svg>">
   <meta name="theme-color" content="#2d3e50">
+  <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
 </head>
 <body>
 <div class="app" id="app">
@@ -28,7 +29,7 @@
     <div class="navside dk pca-admin-sidebar" data-layout="column">
       <div class="navbar no-radius pca-admin-navbar">
         <a href="/admin/" class="navbar-brand">
-          <i class="ion-ios-settings" style="font-size:1.4rem; margin-right:8px;"></i>
+          <i class="ph ph-gear" style="font-size:1.4rem; margin-right:8px;"></i>
           <span class="_600">PCA Admin</span>
         </a>
       </div>
@@ -36,11 +37,11 @@
         <nav class="scroll nav-stacked nav-stacked-rounded nav-color">
           <ul class="nav" data-ui-nav>
             <li class="nav-header hidden-folded"><span class="text-xs">Administración</span></li>
-            <li><a href="/admin/"><span class="nav-icon"><i class="ion-ios-pulse"></i></span><span class="nav-text">Resumen global</span></a></li>
-            <li><a href="/admin/marcas.html"><span class="nav-icon"><i class="ion-ios-people"></i></span><span class="nav-text">Marcas</span></a></li>
-            <li class="active"><a href="/admin/script-generator.html"><span class="nav-icon"><i class="ion-code"></i></span><span class="nav-text">Generador Script</span></a></li>
-            <li><a href="/admin/reportes.html"><span class="nav-icon"><i class="ion-ios-paper"></i></span><span class="nav-text">Reportes</span></a></li>
-            <li><a href="/admin/eventos.html"><span class="nav-icon"><i class="ion-ios-pulse"></i></span><span class="nav-text">Eventos</span></a></li>
+            <li><a href="/admin/"><span class="nav-icon"><i class="ph ph-activity"></i></span><span class="nav-text">Resumen global</span></a></li>
+            <li><a href="/admin/marcas.html"><span class="nav-icon"><i class="ph ph-users"></i></span><span class="nav-text">Marcas</span></a></li>
+            <li class="active"><a href="/admin/script-generator.html"><span class="nav-icon"><i class="ph ph-code"></i></span><span class="nav-text">Generador Script</span></a></li>
+            <li><a href="/admin/reportes.html"><span class="nav-icon"><i class="ph ph-file-text"></i></span><span class="nav-text">Reportes</span></a></li>
+            <li><a href="/admin/eventos.html"><span class="nav-icon"><i class="ph ph-activity"></i></span><span class="nav-text">Eventos</span></a></li>
         </ul>
         </nav>
       </div>
@@ -54,7 +55,7 @@
     <div class="app-header white bg b-b">
       <div class="navbar">
         <a data-toggle="modal" data-target="#aside" class="navbar-item pull-left hidden-lg-up p-r m-a-0">
-          <i class="ion-navicon"></i>
+          <i class="ph ph-list"></i>
         </a>
         <div class="navbar-item pull-left">
           <a href="/admin/" class="text-muted">Admin</a>
@@ -69,7 +70,7 @@
       <div class="padding">
 
         <div id="section-error" class="alert alert-danger hide m-b">
-          <i class="ion-alert-circled"></i> <span id="error-message"></span>
+          <i class="ph ph-warning-circle"></i> <span id="error-message"></span>
         </div>
 
         <div class="row">
@@ -99,10 +100,10 @@
                 </div>
                 <div>
                   <button class="btn btn-sm btn-primary m-r-xs" id="btn-copiar">
-                    <i class="ion-ios-copy"></i> Copiar Script
+                    <i class="ph ph-copy"></i> Copiar Script
                   </button>
                   <button class="btn btn-sm btn-default" id="btn-descargar">
-                    <i class="ion-ios-download"></i> Descargar .lua
+                    <i class="ph ph-download-simple"></i> Descargar .lua
                   </button>
                 </div>
               </div>
@@ -193,7 +194,7 @@
                     <div id="paso5" class="panel-collapse collapse">
                       <div class="panel-body">
                         <a id="link-dashboard" href="#" target="_blank" class="btn btn-sm btn-primary">
-                          <i class="ion-ios-analytics"></i> Ver dashboard de la marca
+                          <i class="ph ph-chart-line-up"></i> Ver dashboard de la marca
                         </a>
                       </div>
                     </div>
@@ -208,7 +209,7 @@
           <!-- Aviso de seguridad -->
           <div class="col-md-4">
             <div class="alert alert-warning" id="alert-seguridad" style="display:none;">
-              <i class="ion-alert-circled" style="font-size:1.2rem;"></i>
+              <i class="ph ph-warning-circle" style="font-size:1.2rem;"></i>
               <strong> Aviso de seguridad</strong>
               <p class="m-t-sm m-b-0" id="texto-seguridad"></p>
             </div>
