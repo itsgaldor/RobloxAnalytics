@@ -508,3 +508,138 @@
   max-width: 200px !important;
   overflow: hidden !important;
 }
+
+/* ════════════════════════════════
+   MODERNIZACIÓN VISUAL — usando tokens
+   ════════════════════════════════ */
+
+/* Boxes / Cards */
+.box {
+  background: var(--pca-bg-surface) !important;
+  border: 1px solid var(--pca-border-subtle) !important;
+  border-radius: var(--pca-radius-lg) !important;
+  box-shadow: var(--pca-shadow-sm) !important;
+}
+
+.box-header {
+  border-bottom: 1px solid var(--pca-border-subtle) !important;
+  padding: 14px 18px !important;
+}
+
+.box-header h3 {
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  color: var(--pca-text-primary) !important;
+  margin: 0 !important;
+  letter-spacing: -0.01em !important;
+}
+
+.box-body { padding: 18px !important; }
+
+/* Tablas */
+.table th {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  color: var(--pca-text-tertiary) !important;
+  border-bottom: 1px solid var(--pca-border-default) !important;
+  padding: 10px 14px !important;
+  background: transparent !important;
+  white-space: nowrap !important;
+}
+
+.table td {
+  font-size: 13px !important;
+  color: var(--pca-text-primary) !important;
+  border-bottom: 1px solid var(--pca-border-subtle) !important;
+  padding: 10px 14px !important;
+  vertical-align: middle !important;
+}
+
+.table tbody tr:hover td {
+  background: var(--pca-bg-hover) !important;
+}
+
+/* Botones modernos */
+.btn {
+  border-radius: var(--pca-radius-md) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  transition: all 0.15s ease !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+.btn.white,
+.btn-default {
+  background: var(--pca-bg-elevated) !important;
+  border: 1px solid var(--pca-border-default) !important;
+  color: var(--pca-text-primary) !important;
+}
+
+.btn.white:hover,
+.btn-default:hover {
+  background: var(--pca-bg-overlay) !important;
+  border-color: var(--pca-border-strong) !important;
+}
+
+/* Form controls */
+.form-control {
+  background: var(--pca-bg-elevated) !important;
+  border: 1px solid var(--pca-border-default) !important;
+  border-radius: var(--pca-radius-md) !important;
+  color: var(--pca-text-primary) !important;
+  font-size: 13px !important;
+  transition: border-color 0.15s, box-shadow 0.15s !important;
+}
+
+.form-control:focus {
+  border-color: var(--brand-primary, #6C3ADE) !important;
+  box-shadow: 0 0 0 3px rgba(108,58,222,0.15) !important;
+  background: var(--pca-bg-overlay) !important;
+  outline: none !important;
+}
+
+.form-control::placeholder {
+  color: var(--pca-text-tertiary) !important;
+}
+
+/* Badges / Labels modernos */
+.label {
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  padding: 3px 8px !important;
+  border-radius: var(--pca-radius-full) !important;
+  letter-spacing: 0.01em !important;
+}
+
+.label.info    { background: var(--pca-info-bg)    !important; color: var(--pca-info)    !important; }
+.label.success { background: var(--pca-success-bg) !important; color: var(--pca-success) !important; }
+.label.warning { background: var(--pca-warning-bg) !important; color: var(--pca-warning) !important; }
+.label.danger  { background: var(--pca-danger-bg)  !important; color: var(--pca-danger)  !important; }
+.label.default { background: var(--pca-bg-overlay) !important; color: var(--pca-text-secondary) !important; }
+
+/* Footer */
+.app-footer {
+  border-top: 1px solid var(--pca-border-subtle) !important;
+  background: var(--pca-bg-surface) !important;
+  color: var(--pca-text-tertiary) !important;
+  font-size: 11px !important;
+  padding: 12px 20px !important;
+}
+
+/* Scrollbar personalizado */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--pca-border-default);
+  border-radius: var(--pca-radius-full);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--pca-border-strong); }
+
+/* Textos helper */
+.text-muted { color: var(--pca-text-secondary) !important; }
+.text-xs { font-size: 11px !important; }
+.text-sm { font-size: 12px !important; }

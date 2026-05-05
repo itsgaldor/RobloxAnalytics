@@ -1,0 +1,75 @@
+/* ════════════════════════════════
+   PERU CITY ANALYTICS — DESIGN TOKENS
+   ════════════════════════════════ */
+
+/* Dark mode (default) */
+.dark,
+.app.dark,
+body.dark {
+  /* Fondos */
+  --pca-bg-base:      #0f1923;
+  --pca-bg-surface:   #1a2535;
+  --pca-bg-elevated:  #243044;
+  --pca-bg-overlay:   #2d3a4f;
+  --pca-bg-hover:     rgba(255,255,255,0.04);
+
+  /* Bordes */
+  --pca-border-subtle:  rgba(255,255,255,0.06);
+  --pca-border-default: rgba(255,255,255,0.10);
+  --pca-border-strong:  rgba(255,255,255,0.18);
+
+  /* Texto */
+  --pca-text-primary:   #f1f5f9;
+  --pca-text-secondary: #94a3b8;
+  --pca-text-tertiary:  #64748b;
+
+  /* Semánticos */
+  --pca-success:    #22c55e;
+  --pca-success-bg: rgba(34,197,94,0.12);
+  --pca-warning:    #f59e0b;
+  --pca-warning-bg: rgba(245,158,11,0.12);
+  --pca-danger:     #ef4444;
+  --pca-danger-bg:  rgba(239,68,68,0.12);
+  --pca-info:       #3b82f6;
+  --pca-info-bg:    rgba(59,130,246,0.12);
+
+  /* Radios */
+  --pca-radius-sm: 6px;
+  --pca-radius-md: 8px;
+  --pca-radius-lg: 12px;
+  --pca-radius-full: 9999px;
+
+  /* Sombras */
+  --pca-shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+  --pca-shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+}
+
+/* Light mode */
+.app:not(.dark),
+body:not(.dark) {
+  --pca-bg-base:      #f8fafc;
+  --pca-bg-surface:   #ffffff;
+  --pca-bg-elevated:  #f1f5f9;
+  --pca-bg-overlay:   #e2e8f0;
+  --pca-bg-hover:     rgba(0,0,0,0.03);
+  --pca-border-subtle:  rgba(0,0,0,0.05);
+  --pca-border-default: rgba(0,0,0,0.10);
+  --pca-border-strong:  rgba(0,0,0,0.18);
+  --pca-text-primary:   #0f172a;
+  --pca-text-secondary: #475569;
+  --pca-text-tertiary:  #94a3b8;
+  --pca-success:    #16a34a;
+  --pca-success-bg: rgba(22,163,74,0.10);
+  --pca-warning:    #d97706;
+  --pca-warning-bg: rgba(217,119,6,0.10);
+  --pca-danger:     #dc2626;
+  --pca-danger-bg:  rgba(220,38,38,0.10);
+  --pca-info:       #2563eb;
+  --pca-info-bg:    rgba(37,99,235,0.10);
+  --pca-radius-sm: 6px;
+  --pca-radius-md: 8px;
+  --pca-radius-lg: 12px;
+  --pca-radius-full: 9999px;
+  --pca-shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+  --pca-shadow-md: 0 4px 12px rgba(0,0,0,0.12);
+}
