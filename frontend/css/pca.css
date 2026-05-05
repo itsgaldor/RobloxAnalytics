@@ -453,3 +453,58 @@
   #range-controls .btn span { display: none !important; }
   .app-header .btn { padding: 0 8px !important; }
 }
+
+/* ════════════════════════════════════════
+   TOP BAR FIX v2 — Mayo 2026
+   Corrección: Bootstrap usa pull-right (float), no .navbar-right
+   ════════════════════════════════════════ */
+
+/* El navbar usa data-pjax — apuntar al contenedor correcto */
+.app-header .navbar[data-pjax] {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: nowrap !important;
+  padding: 0 12px !important;
+  min-height: 50px !important;
+  overflow: visible !important;
+  position: relative !important;
+}
+
+/* Brand wrap — lado izquierdo, no flotar */
+.app-header #brand-banner-wrap {
+  float: none !important;
+  flex-shrink: 0 !important;
+}
+
+/* pull-right en el header = ul con todos los controles del lado derecho */
+.app-header .navbar .pull-right {
+  float: none !important;
+  margin-left: auto !important;
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: nowrap !important;
+  gap: 2px !important;
+  flex-shrink: 0 !important;
+}
+
+.app-header .navbar .pull-right > li {
+  float: none !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+/* "Actualizado HH:MM" — contener dentro del header */
+#last-updated {
+  white-space: nowrap !important;
+  font-size: 11px !important;
+  max-width: 130px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* Script status — contener */
+#script-status {
+  white-space: nowrap !important;
+  max-width: 200px !important;
+  overflow: hidden !important;
+}
