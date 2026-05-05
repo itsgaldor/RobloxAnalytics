@@ -416,7 +416,7 @@ async function loadDashboard(slug, range) {
       lu.textContent = 'Actualizado ' + now.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
     }
   } catch (e) {
-    renderEmptyState('section-kpis', 'ion-ios-alert-outline', 'Error al cargar los datos', e.message);
+    renderEmptyState('section-kpis', 'ph ph-warning', 'Error al cargar los datos', e.message);
     mostrarError('Error al cargar los datos: ' + e.message);
   }
 }
@@ -461,7 +461,7 @@ function renderEmptyState(containerId, icon, title, subtitle) {
   if (!el) return;
   el.innerHTML =
     '<div style="width:100%;padding:56px 24px;text-align:center;color:var(--text-muted,#64748b);">' +
-      '<i class="' + (icon || 'ion-ios-analytics-outline') + '" style="font-size:52px;opacity:0.25;display:block;margin-bottom:16px;"></i>' +
+      '<i class="' + (icon || 'ph ph-chart-line-up') + '" style="font-size:52px;opacity:0.25;display:block;margin-bottom:16px;"></i>' +
       '<p style="font-size:14px;font-weight:500;margin:0 0 6px;color:inherit;">' + (title || '') + '</p>' +
       (subtitle ? '<p style="font-size:12px;margin:0;opacity:0.7;">' + subtitle + '</p>' : '') +
     '</div>';
@@ -476,7 +476,7 @@ function renderKPIs(data) {
 
   var totalSessions = (pub.sessions || 0) + (priv.sessions || 0);
   if (totalSessions === 0 && !(pub.mau || 0) && !(priv.mau || 0)) {
-    renderEmptyState('section-kpis', 'ion-ios-analytics-outline',
+    renderEmptyState('section-kpis', 'ph ph-chart-line-up',
       'Sin sesiones en este período',
       'Probá con un rango de fechas diferente');
     return;
@@ -489,11 +489,11 @@ function renderKPIs(data) {
   var totalHours = (pub.total_hours || 0) + (priv.total_hours || 0);
 
   var kpis = [
-    { valor: formatNumber(totalSessions),           rawTarget: totalSessions,           tipo: 'number',  label: 'Sesiones totales',         icono: 'ion-ios-people',  pub: formatNumber(pub.sessions),                      priv: formatNumber(priv.sessions),                      varPct: prev ? calcVariation(totalSessions, prev.sessions) : null },
-    { valor: formatNumber(Math.round(totalDau)),    rawTarget: Math.round(totalDau),    tipo: 'number',  label: 'Usuarios activos / día',    icono: 'ion-person',      pub: formatNumber(Math.round(pub.dau || 0)),           priv: formatNumber(Math.round(priv.dau || 0)),           varPct: prev ? calcVariation(totalDau, prev.dau) : null },
-    { valor: formatNumber(totalMau),                rawTarget: totalMau,                tipo: 'number',  label: 'Usuarios activos (30 días)',icono: 'ion-calendar',    pub: formatNumber(pub.mau),                           priv: formatNumber(priv.mau),                           varPct: prev ? calcVariation(totalMau, prev.mau) : null },
-    { valor: formatMinutes(avgMinutes),             rawTarget: avgMinutes,              tipo: 'minutes', label: 'Tiempo promedio sesión',    icono: 'ion-clock',       pub: formatMinutes(pub.avg_session_minutes),           priv: formatMinutes(priv.avg_session_minutes),           varPct: prev ? calcVariation(avgMinutes, prev.avg_session_minutes) : null },
-    { valor: formatNumber(Math.round(totalHours)) + 'h', rawTarget: Math.round(totalHours), tipo: 'hours', label: 'Horas totales de juego', icono: 'ion-ios-timer',   pub: formatNumber(Math.round(pub.total_hours || 0)) + 'h', priv: formatNumber(Math.round(priv.total_hours || 0)) + 'h', varPct: prev ? calcVariation(totalHours, prev.total_hours) : null }
+    { valor: formatNumber(totalSessions),           rawTarget: totalSessions,           tipo: 'number',  label: 'Sesiones totales',         icono: 'ph ph-users',  pub: formatNumber(pub.sessions),                      priv: formatNumber(priv.sessions),                      varPct: prev ? calcVariation(totalSessions, prev.sessions) : null },
+    { valor: formatNumber(Math.round(totalDau)),    rawTarget: Math.round(totalDau),    tipo: 'number',  label: 'Usuarios activos / día',    icono: 'ph ph-user',      pub: formatNumber(Math.round(pub.dau || 0)),           priv: formatNumber(Math.round(priv.dau || 0)),           varPct: prev ? calcVariation(totalDau, prev.dau) : null },
+    { valor: formatNumber(totalMau),                rawTarget: totalMau,                tipo: 'number',  label: 'Usuarios activos (30 días)',icono: 'ph ph-calendar',    pub: formatNumber(pub.mau),                           priv: formatNumber(priv.mau),                           varPct: prev ? calcVariation(totalMau, prev.mau) : null },
+    { valor: formatMinutes(avgMinutes),             rawTarget: avgMinutes,              tipo: 'minutes', label: 'Tiempo promedio sesión',    icono: 'ph ph-clock',       pub: formatMinutes(pub.avg_session_minutes),           priv: formatMinutes(priv.avg_session_minutes),           varPct: prev ? calcVariation(avgMinutes, prev.avg_session_minutes) : null },
+    { valor: formatNumber(Math.round(totalHours)) + 'h', rawTarget: Math.round(totalHours), tipo: 'hours', label: 'Horas totales de juego', icono: 'ph ph-timer',   pub: formatNumber(Math.round(pub.total_hours || 0)) + 'h', priv: formatNumber(Math.round(priv.total_hours || 0)) + 'h', varPct: prev ? calcVariation(totalHours, prev.total_hours) : null }
   ];
 
   var section = document.getElementById('section-kpis');
@@ -565,7 +565,7 @@ function renderCharts(data) {
   currentPrevSeries = prevSeries;
 
   if (!pubSeries.length && !privSeries.length) {
-    renderEmptyState('section-charts', 'ion-ios-stats-outline',
+    renderEmptyState('section-charts', 'ph ph-chart-bar',
       'Sin datos de gráficos', 'No hay series temporales para el período seleccionado');
     return;
   }
@@ -710,7 +710,7 @@ function renderTable(rows) {
   if (!tbody) return;
 
   if (!rows || rows.length === 0) {
-    renderEmptyState('section-table', 'ion-ios-list-outline',
+    renderEmptyState('section-table', 'ph ph-list',
       'Sin datos diarios', 'No hay registros para el período seleccionado');
     return;
   }
@@ -740,9 +740,9 @@ function renderScriptStatus(health, lastEventAt) {
   var el = document.getElementById('script-status');
   if (!el) return;
   var configs = {
-    ok:      { color: '#22c55e', icon: 'ion-ios-checkmark-circle', label: 'Script activo',      bg: 'rgba(34,197,94,0.15)'  },
-    warning: { color: '#f59e0b', icon: 'ion-ios-alert',            label: 'Sin datos recientes', bg: 'rgba(245,158,11,0.15)' },
-    offline: { color: '#ef4444', icon: 'ion-ios-close-circle',     label: 'Script desconectado', bg: 'rgba(239,68,68,0.15)'  }
+    ok:      { color: '#22c55e', icon: 'ph ph-check-circle', label: 'Script activo',      bg: 'rgba(34,197,94,0.15)'  },
+    warning: { color: '#f59e0b', icon: 'ph ph-warning',            label: 'Sin datos recientes', bg: 'rgba(245,158,11,0.15)' },
+    offline: { color: '#ef4444', icon: 'ph ph-x-circle',     label: 'Script desconectado', bg: 'rgba(239,68,68,0.15)'  }
   };
   var cfg = configs[health] || configs.offline;
   var timeAgo = 'nunca conectado';
