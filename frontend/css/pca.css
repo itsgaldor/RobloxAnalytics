@@ -334,3 +334,122 @@
   overflow-y: auto !important;
   overflow-x: hidden !important;
 }
+
+/* ════════════════════════════════════════
+   TOP BAR FIX — Mayo 2026
+   ════════════════════════════════════════ */
+
+/* Contenedor principal del header */
+.app-header {
+  overflow: visible !important;
+}
+
+.app-header .navbar {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: nowrap !important;
+  width: 100% !important;
+  padding: 0 8px !important;
+  margin: 0 !important;
+  min-height: 50px !important;
+  overflow: visible !important;
+}
+
+/* Lado izquierdo — logo + nombre marca */
+.app-header .navbar-header {
+  display: flex !important;
+  align-items: center !important;
+  flex-shrink: 0 !important;
+  float: none !important;
+}
+
+.app-header #brand-banner-wrap {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  flex-shrink: 0 !important;
+  max-width: 300px !important;
+  overflow: hidden !important;
+}
+
+#brand-banner {
+  max-height: 36px !important;
+  max-width: 180px !important;
+  object-fit: contain !important;
+}
+
+/* Lado derecho — controles */
+.app-header .navbar-right {
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  flex-wrap: nowrap !important;
+  float: none !important;
+  margin-left: auto !important;
+  flex-shrink: 0 !important;
+}
+
+.app-header .navbar-right > li {
+  display: flex !important;
+  align-items: center !important;
+  float: none !important;
+}
+
+/* Script status badge — no hacer overflow */
+#script-status {
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
+
+/* Timestamp "Actualizado" */
+#last-updated {
+  white-space: nowrap !important;
+  font-size: 11px !important;
+  color: #94a3b8 !important;
+  flex-shrink: 0 !important;
+}
+
+/* Botones de rango */
+#range-filters,
+#range-controls {
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  flex-shrink: 0 !important;
+}
+
+/* Date picker — posicionado correctamente */
+#custom-date-picker {
+  position: fixed !important;
+  top: 56px !important;
+  right: 16px !important;
+  z-index: 1050 !important;
+}
+
+/* Botones en el header — tamaño consistente */
+.app-header .btn {
+  height: 32px !important;
+  padding: 0 12px !important;
+  font-size: 12px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  white-space: nowrap !important;
+}
+
+.app-header .btn i {
+  font-size: 14px !important;
+}
+
+/* Responsive — ocultar elementos en pantallas pequeñas */
+@media (max-width: 992px) {
+  #last-updated { display: none !important; }
+  #script-status { display: none !important; }
+}
+
+@media (max-width: 768px) {
+  #brand-banner { display: none !important; }
+  #range-filters .btn span,
+  #range-controls .btn span { display: none !important; }
+  .app-header .btn { padding: 0 8px !important; }
+}
