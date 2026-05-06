@@ -643,3 +643,57 @@
 .text-muted { color: var(--pca-text-secondary) !important; }
 .text-xs { font-size: 11px !important; }
 .text-sm { font-size: 12px !important; }
+
+/* ════════════════════════════════
+   TOOLTIP CUSTOM — Gráfico principal
+   ════════════════════════════════ */
+#pca-chart-tooltip {
+  position: fixed;
+  display: none;
+  z-index: 9999;
+  pointer-events: none;
+  transform: translateX(-50%);
+  transition: opacity 0.1s ease;
+
+  background: rgba(10, 15, 25, 0.95);
+  border: 1px solid var(--pca-border-default, rgba(255,255,255,0.10));
+  border-radius: 8px;
+  padding: 8px 14px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  white-space: nowrap;
+  min-width: 140px;
+  text-align: center;
+}
+
+#pca-chart-tooltip .tooltip-date {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-bottom: 4px;
+  font-weight: 400;
+}
+
+#pca-chart-tooltip .tooltip-value {
+  font-size: 18px;
+  font-weight: 600;
+  color: #f1f5f9;
+  line-height: 1.2;
+}
+
+#pca-chart-tooltip .tooltip-label {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+/* Flecha del tooltip */
+#pca-chart-tooltip::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0; height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid rgba(10,15,25,0.95);
+}

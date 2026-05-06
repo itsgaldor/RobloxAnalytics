@@ -21,6 +21,14 @@ document.addEventListener('DOMContentLoaded', async function () {
   initTheme();
   initSidebar();
 
+  // Crear tooltip div si no existe
+  if (!document.getElementById('pca-chart-tooltip')) {
+    var tooltipEl = document.createElement('div');
+    tooltipEl.id = 'pca-chart-tooltip';
+    tooltipEl.innerHTML = '<div class="tooltip-date"></div><div class="tooltip-value"></div><div class="tooltip-label"></div>';
+    document.body.appendChild(tooltipEl);
+  }
+
   currentSlug = getSlugFromUrl();
   if (!currentSlug) {
     mostrarError('No se especificó una marca válida. Usá /dashboard/?brand=yape o /dashboard/?brand=demo');
@@ -629,25 +637,14 @@ function renderCharts(data) {
       });
     }
 
-    mainChart = new Chart(ctx1, {
+    window.mainChart = mainChart = new Chart(ctx1, {
       type: 'line',
       data: { labels: labels, datasets: datasets },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         legend: { display: hasPrevData, position: 'top', labels: { fontSize: 11, boxWidth: 20, padding: 16 } },
-        tooltips: Object.assign({}, TOOLTIP_DEFAULTS, {
-          callbacks: {
-            title: function (items) { return items[0] ? items[0].xLabel : ''; },
-            label: function (item, d) {
-              var label = d.datasets[item.datasetIndex].label || '';
-              var val   = item.yLabel;
-              if (currentMetric === 'avg_minutes') return label + ': ' + Math.round(val) + ' min';
-              if (currentMetric === 'total_hours')  return label + ': ' + Math.round(val) + 'h';
-              return label + ': ' + Number(val).toLocaleString('es-PE');
-            }
-          }
-        }),
+        tooltips: { enabled: false },
         hover: { mode: 'nearest', intersect: false, animationDuration: 100 },
         scales: {
           xAxes: [{ gridLines: { display: false }, ticks: { fontSize: 11 } }],
@@ -662,6 +659,9 @@ function renderCharts(data) {
         }
       }
     });
+    // Inicializar tooltip custom
+    var canvasEl = document.getElementById('chart-sessions');
+    initChartTooltip(window.mainChart, canvasEl);
   }
 
   var ctx2 = document.getElementById('chart-server-type');
@@ -735,6 +735,85 @@ function renderTable(rows) {
 }
 
 // ─── SCRIPT STATUS BADGE ─────────────────────────────────────────────────
+
+
+function initChartTooltip(chart, canvas) {
+  var tooltip = document.getElementById('pca-chart-tooltip');
+  if (!tooltip || !chart || !canvas) return;
+
+  var metricLabels = {
+    sessions:    'sesiones',
+    dau:         'usuarios únicos',
+    avg_minutes: 'min promedio',
+    total_hours: 'horas de juego'
+  };
+
+  var metricFormatters = {
+    sessions:    function(v) { return Number(v).toLocaleString('es-PE'); },
+    dau:         function(v) { return Number(v).toLocaleString('es-PE'); },
+    avg_minutes: function(v) { return Math.round(v) + ' min'; },
+    total_hours: function(v) { return Math.round(v) + 'h'; }
+  };
+
+  canvas.addEventListener('mousemove', function(e) {
+    if (!window.mainChart) return;
+    var rect = canvas.getBoundingClientRect();
+    var mouseX = e.clientX - rect.left;
+
+    var meta = window.mainChart.getDatasetMeta(0);
+    if (!meta || !meta.data || meta.data.length === 0) return;
+
+    var closestIndex = -1;
+    var minDist = Infinity;
+    meta.data.forEach(function(point, i) {
+      if (!point._model) return;
+      var dist = Math.abs(mouseX - point._model.x);
+      if (dist < minDist && dist < 40) { minDist = dist; closestIndex = i; }
+    });
+
+    if (closestIndex === -1) { tooltip.style.display = 'none'; return; }
+
+    var chartData = window.mainChart.data;
+    var label = chartData.labels[closestIndex] || '';
+    var value = chartData.datasets[0].data[closestIndex] || 0;
+    var activeBtn = document.querySelector('.active-metric');
+    var activeMetric = activeBtn ? (activeBtn.dataset.metric || 'sessions') : 'sessions';
+
+    var formatter = metricFormatters[activeMetric] || function(v) { return v; };
+    var metricLabel = metricLabels[activeMetric] || '';
+
+    tooltip.querySelector('.tooltip-date').textContent = label;
+    tooltip.querySelector('.tooltip-value').textContent = formatter(value);
+    tooltip.querySelector('.tooltip-label').textContent = metricLabel;
+
+    var pointModel = meta.data[closestIndex]._model;
+    var pointX = rect.left + pointModel.x;
+    var pointY = rect.top + pointModel.y;
+
+    tooltip.style.display = 'block';
+    tooltip.style.left = pointX + 'px';
+    tooltip.style.top = (pointY - tooltip.offsetHeight - 12) + 'px';
+
+    meta.data.forEach(function(point, i) {
+      if (point._model) {
+        point._model.radius = i === closestIndex ? 7 : 4;
+      }
+    });
+    window.mainChart.render({ duration: 0 });
+  });
+
+  canvas.addEventListener('mouseleave', function() {
+    tooltip.style.display = 'none';
+    if (!window.mainChart) return;
+    var meta = window.mainChart.getDatasetMeta(0);
+    if (meta && meta.data) {
+      meta.data.forEach(function(point) {
+        if (point._model) point._model.radius = 4;
+      });
+      window.mainChart.render({ duration: 0 });
+    }
+  });
+}
 
 function renderScriptStatus(health, lastEventAt) {
   var el = document.getElementById('script-status');
