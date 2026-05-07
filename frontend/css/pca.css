@@ -1,4 +1,4 @@
-/* ============================================================
+﻿/* ============================================================
    Peru City Analytics — Estilos custom
    Complementa la plantilla Aside sin modificar sus archivos
    ============================================================ */
@@ -63,6 +63,7 @@
 }
 #section-kpis .padding {
   padding: 20px 16px !important;
+  min-height: 150px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -334,365 +335,180 @@
   overflow-x: hidden !important;
 }
 
-/* ════════════════════════════════════════
-   TOP BAR FIX — Mayo 2026
-   ════════════════════════════════════════ */
-
-/* Contenedor principal del header */
-.app-header {
-  overflow: visible !important;
-}
-
-.app-header .navbar {
-  display: flex !important;
-  align-items: center !important;
-  flex-wrap: nowrap !important;
-  width: 100% !important;
-  padding: 0 8px !important;
-  margin: 0 !important;
-  min-height: 50px !important;
-  overflow: visible !important;
-}
-
-/* Lado izquierdo — logo + nombre marca */
-.app-header .navbar-header {
-  display: flex !important;
-  align-items: center !important;
-  flex-shrink: 0 !important;
-  float: none !important;
-}
-
-.app-header #brand-banner-wrap {
-  display: flex !important;
-  align-items: center !important;
-  gap: 8px !important;
-  flex-shrink: 0 !important;
-  max-width: 300px !important;
-  overflow: hidden !important;
-}
-
-#brand-banner {
-  max-height: 36px !important;
-  max-width: 180px !important;
-  object-fit: contain !important;
-}
-
-/* Lado derecho — controles */
-.app-header .navbar-right {
-  display: flex !important;
-  align-items: center !important;
-  gap: 4px !important;
-  flex-wrap: nowrap !important;
-  float: none !important;
-  margin-left: auto !important;
-  flex-shrink: 0 !important;
-}
-
-.app-header .navbar-right > li {
-  display: flex !important;
-  align-items: center !important;
-  float: none !important;
-}
-
-/* Script status badge — no hacer overflow */
-#script-status {
-  white-space: nowrap !important;
-  flex-shrink: 0 !important;
-}
-
-/* Timestamp "Actualizado" */
-#last-updated {
-  white-space: nowrap !important;
-  font-size: 11px !important;
-  color: #94a3b8 !important;
-  flex-shrink: 0 !important;
-}
-
-/* Botones de rango */
-#range-filters,
-#range-controls {
-  display: flex !important;
-  align-items: center !important;
-  gap: 4px !important;
-  flex-shrink: 0 !important;
-}
-
-/* Date picker — posicionado correctamente */
-#custom-date-picker {
-  position: fixed !important;
-  top: 56px !important;
-  right: 16px !important;
-  z-index: 1050 !important;
-}
-
-/* Botones en el header — tamaño consistente */
-.app-header .btn {
-  height: 32px !important;
-  padding: 0 12px !important;
-  font-size: 12px !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 4px !important;
-  white-space: nowrap !important;
-}
-
-.app-header .btn i {
-  font-size: 14px !important;
-}
-
-/* Responsive — ocultar elementos en pantallas pequeñas */
-@media (max-width: 992px) {
-  #last-updated { display: none !important; }
-  #script-status { display: none !important; }
-}
-
-@media (max-width: 768px) {
-  #brand-banner { display: none !important; }
-  #range-filters .btn span,
-  #range-controls .btn span { display: none !important; }
-  .app-header .btn { padding: 0 8px !important; }
-}
-
-/* ════════════════════════════════════════
-   TOP BAR FIX v2 — Mayo 2026
-   Corrección: Bootstrap usa pull-right (float), no .navbar-right
-   ════════════════════════════════════════ */
-
-/* El navbar usa data-pjax — apuntar al contenedor correcto */
-.app-header .navbar[data-pjax] {
-  display: flex !important;
-  align-items: center !important;
-  flex-wrap: nowrap !important;
-  padding: 0 12px !important;
-  min-height: 50px !important;
-  overflow: visible !important;
-  position: relative !important;
-}
-
-/* Brand wrap — lado izquierdo, no flotar */
-.app-header #brand-banner-wrap {
-  float: none !important;
-  flex-shrink: 0 !important;
-}
-
-/* pull-right en el header = ul con todos los controles del lado derecho */
-.app-header .navbar .pull-right {
-  float: none !important;
-  margin-left: auto !important;
-  display: flex !important;
-  align-items: center !important;
-  flex-wrap: nowrap !important;
-  gap: 2px !important;
-  flex-shrink: 0 !important;
-}
-
-.app-header .navbar .pull-right > li {
-  float: none !important;
-  display: flex !important;
-  align-items: center !important;
-}
-
-/* "Actualizado HH:MM" — contener dentro del header */
-#last-updated {
-  white-space: nowrap !important;
-  font-size: 11px !important;
-  max-width: 130px !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-}
-
-/* Script status — contener */
-#script-status {
-  white-space: nowrap !important;
-  max-width: 200px !important;
-  overflow: hidden !important;
-}
-
 /* ════════════════════════════════
-   MODERNIZACIÓN VISUAL — usando tokens
+   SISTEMA DE METAS — Goal Cards
    ════════════════════════════════ */
 
-/* Boxes / Cards */
-.box {
-  background: var(--pca-bg-surface) !important;
-  border: 1px solid var(--pca-border-subtle) !important;
-  border-radius: var(--pca-radius-lg) !important;
-  box-shadow: var(--pca-shadow-sm) !important;
+/* Grid de cards */
+#goals-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
 }
 
-.box-header {
-  border-bottom: 1px solid var(--pca-border-subtle) !important;
-  padding: 14px 18px !important;
+/* Card individual */
+.goal-card {
+  background: var(--pca-bg-elevated, #243044);
+  border: 1px solid var(--pca-border-subtle, rgba(255,255,255,0.06));
+  border-radius: 10px;
+  padding: 16px;
+  position: relative;
+  transition: border-color 0.2s ease, transform 0.15s ease;
 }
 
-.box-header h3 {
-  font-size: 14px !important;
-  font-weight: 600 !important;
-  color: var(--pca-text-primary) !important;
-  margin: 0 !important;
-  letter-spacing: -0.01em !important;
+.goal-card:hover {
+  border-color: var(--pca-border-default, rgba(255,255,255,0.12));
+  transform: translateY(-1px);
 }
 
-.box-body { padding: 18px !important; }
-
-/* Tablas */
-.table th {
-  font-size: 11px !important;
-  font-weight: 600 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.05em !important;
-  color: var(--pca-text-tertiary) !important;
-  border-bottom: 1px solid var(--pca-border-default) !important;
-  padding: 10px 14px !important;
-  background: transparent !important;
-  white-space: nowrap !important;
+/* Botón X de borrar — esquina superior derecha */
+.goal-delete-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--pca-text-tertiary, #64748b);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  opacity: 0;
+  transition: opacity 0.2s, background 0.15s, color 0.15s;
+  padding: 0;
 }
 
-.table td {
-  font-size: 13px !important;
-  color: var(--pca-text-primary) !important;
-  border-bottom: 1px solid var(--pca-border-subtle) !important;
-  padding: 10px 14px !important;
-  vertical-align: middle !important;
+.goal-card:hover .goal-delete-btn {
+  opacity: 1;
 }
 
-.table tbody tr:hover td {
-  background: var(--pca-bg-hover) !important;
+.goal-delete-btn:hover {
+  background: var(--pca-danger-bg, rgba(239,68,68,0.12));
+  color: var(--pca-danger, #ef4444);
 }
 
-/* Botones modernos */
-.btn {
-  border-radius: var(--pca-radius-md) !important;
-  font-size: 12px !important;
-  font-weight: 500 !important;
-  transition: all 0.15s ease !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 6px !important;
-}
-
-.btn.white,
-.btn-default {
-  background: var(--pca-bg-elevated) !important;
-  border: 1px solid var(--pca-border-default) !important;
-  color: var(--pca-text-primary) !important;
-}
-
-.btn.white:hover,
-.btn-default:hover {
-  background: var(--pca-bg-overlay) !important;
-  border-color: var(--pca-border-strong) !important;
-}
-
-/* Form controls */
-.form-control {
-  background: var(--pca-bg-elevated) !important;
-  border: 1px solid var(--pca-border-default) !important;
-  border-radius: var(--pca-radius-md) !important;
-  color: var(--pca-text-primary) !important;
-  font-size: 13px !important;
-  transition: border-color 0.15s, box-shadow 0.15s !important;
-}
-
-.form-control:focus {
-  border-color: var(--brand-primary, #6C3ADE) !important;
-  box-shadow: 0 0 0 3px rgba(108,58,222,0.15) !important;
-  background: var(--pca-bg-overlay) !important;
-  outline: none !important;
-}
-
-.form-control::placeholder {
-  color: var(--pca-text-tertiary) !important;
-}
-
-/* Badges / Labels modernos */
-.label {
-  font-size: 11px !important;
-  font-weight: 500 !important;
-  padding: 3px 8px !important;
-  border-radius: var(--pca-radius-full) !important;
-  letter-spacing: 0.01em !important;
-}
-
-.label.info    { background: var(--pca-info-bg)    !important; color: var(--pca-info)    !important; }
-.label.success { background: var(--pca-success-bg) !important; color: var(--pca-success) !important; }
-.label.warning { background: var(--pca-warning-bg) !important; color: var(--pca-warning) !important; }
-.label.danger  { background: var(--pca-danger-bg)  !important; color: var(--pca-danger)  !important; }
-.label.default { background: var(--pca-bg-overlay) !important; color: var(--pca-text-secondary) !important; }
-
-/* Footer */
-.app-footer {
-  border-top: 1px solid var(--pca-border-subtle) !important;
-  background: var(--pca-bg-surface) !important;
-  color: var(--pca-text-tertiary) !important;
-  font-size: 11px !important;
-  padding: 12px 20px !important;
-}
-
-/* Scrollbar personalizado */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb {
-  background: var(--pca-border-default);
-  border-radius: var(--pca-radius-full);
-}
-::-webkit-scrollbar-thumb:hover { background: var(--pca-border-strong); }
-
-/* Textos helper */
-.text-muted { color: var(--pca-text-secondary) !important; }
-.text-xs { font-size: 11px !important; }
-.text-sm { font-size: 12px !important; }
-
-/* ════════════════════════════════
-   TOOLTIP CUSTOM — Gráfico principal
-   ════════════════════════════════ */
-#pca-chart-tooltip {
-  position: fixed;
-  display: none;
-  z-index: 9999;
-  pointer-events: none;
-  transform: translateX(-50%);
-  transition: opacity 0.1s ease;
-
-  background: rgba(10, 15, 25, 0.95);
-  border: 1px solid var(--pca-border-default, rgba(255,255,255,0.10));
-  border-radius: 8px;
-  padding: 8px 14px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-  white-space: nowrap;
-  min-width: 140px;
-  text-align: center;
-}
-
-#pca-chart-tooltip .tooltip-date {
+/* Label de la métrica */
+.goal-metric-label {
   font-size: 11px;
-  color: #94a3b8;
-  margin-bottom: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--pca-text-tertiary, #64748b);
+  margin-bottom: 10px;
+  padding-right: 28px;
+  line-height: 1.3;
+}
+
+/* Valores: actual / objetivo */
+.goal-values {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  margin-bottom: 12px;
+}
+
+.goal-current {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--pca-text-primary, #f1f5f9);
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.goal-separator {
+  color: var(--pca-text-tertiary, #64748b);
+  font-size: 16px;
+  font-weight: 300;
+}
+
+.goal-target {
+  font-size: 14px;
+  color: var(--pca-text-secondary, #94a3b8);
   font-weight: 400;
 }
 
-#pca-chart-tooltip .tooltip-value {
-  font-size: 18px;
+/* Barra de progreso */
+.goal-progress-bar {
+  height: 5px;
+  background: var(--pca-bg-overlay, #2d3a4f);
+  border-radius: 99px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.goal-progress-fill {
+  height: 100%;
+  border-radius: 99px;
+  width: 0%;
+  transition: width 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Colores por estado */
+.goal-progress-fill.on_track    { background: #22c55e; }
+.goal-progress-fill.at_risk     { background: #f59e0b; }
+.goal-progress-fill.completed   { background: #3b82f6; }
+.goal-progress-fill.not_started { background: #475569; }
+
+/* Footer de la card */
+.goal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.goal-pct {
+  font-size: 13px;
   font-weight: 600;
-  color: #f1f5f9;
-  line-height: 1.2;
 }
+.goal-pct.on_track    { color: #22c55e; }
+.goal-pct.at_risk     { color: #f59e0b; }
+.goal-pct.completed   { color: #3b82f6; }
+.goal-pct.not_started { color: #64748b; }
 
-#pca-chart-tooltip .tooltip-label {
+.goal-dates {
   font-size: 11px;
-  color: #64748b;
-  margin-top: 2px;
+  color: var(--pca-text-tertiary, #64748b);
 }
 
-/* Flecha del tooltip */
-#pca-chart-tooltip::after {
-  content: '';
-  position: absolute;
-  bottom: -6px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 0; height: 0;
-  border-left: 6px solid transparent;
-  border-right: 6px solid transparent;
-  border-top: 6px solid rgba(10,15,25,0.95);
+/* Badge de estado */
+.goal-status-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 99px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.goal-status-badge.on_track    { background: rgba(34,197,94,0.12);  color: #22c55e; }
+.goal-status-badge.at_risk     { background: rgba(245,158,11,0.12); color: #f59e0b; }
+.goal-status-badge.completed   { background: rgba(59,130,246,0.12); color: #3b82f6; }
+.goal-status-badge.not_started { background: rgba(71,85,105,0.15);  color: #94a3b8; }
+
+/* Sección de metas — colapsable */
+#goals-body.goals-collapsed { display: none; }
+
+/* Botón toggle */
+#btn-toggle-goals {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  #goals-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .goal-current { font-size: 22px; }
 }
